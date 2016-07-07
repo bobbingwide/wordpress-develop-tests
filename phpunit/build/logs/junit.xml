@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="" tests="1" assertions="4" failures="1" errors="0" time="0.161447">
+    <testsuite name="Tests_Post_Output" file="C:\svn\wordpress-develop\tests\phpunit\tests\post\output.php" tests="1" assertions="4" failures="1" errors="0" time="0.161447">
+      <testcase name="test_the_content" class="Tests_Post_Output" file="C:\svn\wordpress-develop\tests\phpunit\tests\post\output.php" line="37" assertions="4" time="0.161447">
+        <failure type="PHPUnit_Framework_ExpectationFailedException">Tests_Post_Output::test_the_content
+Failed asserting that two strings are equal.
+--- Expected
++++ Actual
+@@ @@
+-'&lt;p&gt;&lt;i&gt;This is the excerpt.&lt;/i&gt;&lt;br /&gt;
+-&lt;span id="more-3"&gt;&lt;/span&gt;&lt;br /&gt;
++'&lt;p&gt;&lt;i&gt;This is the excerpt.&lt;/i&gt;
++&lt;span id="more-3"&gt;&lt;/span&gt;
+ This is the &lt;b&gt;body&lt;/b&gt;.&lt;/p&gt;'
+
+C:\svn\wordpress-develop\tests\phpunit\tests\post\output.php:57
+</failure>
+      </testcase>
+    </testsuite>
+  </testsuite>
+</testsuites>
