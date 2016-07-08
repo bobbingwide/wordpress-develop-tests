@@ -2,7 +2,7 @@
 
 /**
  * @group query
- * @covers setup_postdata
+ * @covers ::setup_postdata
  */
 class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	protected $global_keys = array( 'id', 'authordata', 'currentday', 'currentmonth', 'page', 'pages', 'multipage', 'more', 'numpages' );
@@ -23,32 +23,52 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 		}
 	}
 
-	public function tearDown() {
-		parent::tearDown();
-		return;
-
-		foreach ( $this->global_keys as $global_key ) {
-			if ( ! is_null( $this->global_data[ $global_key ] ) ) {
-				$GLOBALS[ $global_key ] = $this->global_data[ $global_key ];
-			} else {
-				unset( $GLOBALS[ $global_key ] );
-			}
-		}
-
-		$this->global_data = array();
-	}
-
 	public function test_id() {
-		$p = $this->factory->post->create_and_get();
+		$p = self::factory()->post->create_and_get();
 		setup_postdata( $p );
 
 		$this->assertNotEmpty( $p->ID );
 		$this->assertSame( $p->ID, $GLOBALS['id'] );
 	}
 
+	/**
+	 * @ticket 30970
+	 */
+	public function test_setup_by_id() {
+		$p = self::factory()->post->create_and_get();
+		setup_postdata( $p->ID );
+
+		$this->assertSame( $p->ID, $GLOBALS['id'] );
+	}
+
+	/**
+	 * @ticket 30970
+	 */
+	public function test_setup_by_fake_post() {
+		$fake = new stdClass;
+		$fake->ID = 98765;
+		setup_postdata( $fake->ID );
+
+		// Fails because there's no post with this ID.
+		$this->assertNotSame( $fake->ID, $GLOBALS['id'] );
+	}
+
+	/**
+	 * @ticket 30970
+	 */
+	public function test_setup_by_postish_object() {
+		$p = self::factory()->post->create();
+
+		$post = new stdClass();
+		$post->ID = $p;
+		setup_postdata( $p );
+
+		$this->assertSame( $p, $GLOBALS['id'] );
+	}
+
 	public function test_authordata() {
-		$u = $this->factory->user->create_and_get();
-		$p = $this->factory->post->create_and_get( array(
+		$u = self::factory()->user->create_and_get();
+		$p = self::factory()->post->create_and_get( array(
 			'post_author' => $u->ID,
 		) );
 		setup_postdata( $p );
@@ -58,7 +78,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	}
 
 	public function test_currentday() {
-		$p = $this->factory->post->create_and_get( array(
+		$p = self::factory()->post->create_and_get( array(
 			'post_date' => '1980-09-09 06:30:00',
 		) );
 		setup_postdata( $p );
@@ -67,7 +87,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	}
 
 	public function test_currentmonth() {
-		$p = $this->factory->post->create_and_get( array(
+		$p = self::factory()->post->create_and_get( array(
 			'post_date' => '1980-09-09 06:30:00',
 		) );
 		setup_postdata( $p );
@@ -76,14 +96,14 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	}
 
 	public function test_secondary_query_post_vars() {
-		$users = $this->factory->user->create_many( 2 );
+		$users = self::factory()->user->create_many( 2 );
 
-		$post1 = $this->factory->post->create_and_get( array(
+		$post1 = self::factory()->post->create_and_get( array(
 			'post_author' => $users[0],
 			'post_date' => '2012-02-02 02:00:00',
 		) );
 
-		$post2 = $this->factory->post->create_and_get( array(
+		$post2 = self::factory()->post->create_and_get( array(
 			'post_author' => $users[1],
 			'post_date' => '2013-03-03 03:00:00',
 		) );
@@ -122,7 +142,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	}
 
 	public function test_single_page() {
-		$post = $this->factory->post->create_and_get( array(
+		$post = self::factory()->post->create_and_get( array(
 			'post_content' => 'Page 0',
 		) );
 		setup_postdata( $post );
@@ -133,7 +153,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	}
 
 	public function test_multi_page() {
-		$post = $this->factory->post->create_and_get( array(
+		$post = self::factory()->post->create_and_get( array(
 			'post_content' => 'Page 0<!--nextpage-->Page 1<!--nextpage-->Page 2<!--nextpage-->Page 3',
 		) );
 		setup_postdata( $post );
@@ -147,7 +167,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	 * @ticket 16746
 	 */
 	public function test_nextpage_at_start_of_content() {
-		$post = $this->factory->post->create_and_get( array(
+		$post = self::factory()->post->create_and_get( array(
 			'post_content' => '<!--nextpage-->Page 1<!--nextpage-->Page 2<!--nextpage-->Page 3',
 		) );
 		setup_postdata( $post );
@@ -158,7 +178,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	}
 
 	public function test_trim_nextpage_linebreaks() {
-		$post = $this->factory->post->create_and_get( array(
+		$post = self::factory()->post->create_and_get( array(
 			'post_content' => "Page 0\n<!--nextpage-->\nPage 1\nhas a line break\n<!--nextpage-->Page 2<!--nextpage-->\n\nPage 3",
 		) );
 		setup_postdata( $post );
@@ -170,10 +190,10 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	 * @ticket 25349
 	 */
 	public function test_secondary_query_nextpage() {
-		$post1 = $this->factory->post->create( array(
+		$post1 = self::factory()->post->create( array(
 			'post_content' => 'Post 1 Page 1<!--nextpage-->Post 1 Page 2',
 		) );
-		$post2 = $this->factory->post->create( array(
+		$post2 = self::factory()->post->create( array(
 			'post_content' => 'Post 2 Page 1<!--nextpage-->Post 2 Page 2',
 		) );
 
@@ -202,7 +222,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	}
 
 	public function test_page_from_wp_query() {
-		$page = $this->factory->post->create_and_get( array(
+		$page = self::factory()->post->create_and_get( array(
 			'post_type' => 'page',
 		) );
 
@@ -215,7 +235,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	}
 
 	public function test_page_when_on_page() {
-		$page = $this->factory->post->create_and_get( array(
+		$page = self::factory()->post->create_and_get( array(
 			'post_type' => 'page',
 		) );
 		$this->go_to( get_permalink( $page ) );
@@ -228,7 +248,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	 * @ticket 20904
 	 */
 	public function test_secondary_query_page() {
-		$post = $this->factory->post->create_and_get();
+		$post = self::factory()->post->create_and_get();
 		$this->go_to( '/?page=3' );
 		setup_postdata( $post );
 
@@ -236,7 +256,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 		$this->assertSame( 3, $GLOBALS['page'] );
 
 		// Secondary loop.
-		$posts = $this->factory->post->create_many( 5 );
+		$posts = self::factory()->post->create_many( 5 );
 		$q = new WP_Query( array(
 			'page' => 4,
 			'posts_per_page' => 1,
@@ -259,7 +279,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	 * @ticket 20904
 	 */
 	public function test_more_when_on_setup_post() {
-		$post = $this->factory->post->create_and_get();
+		$post = self::factory()->post->create_and_get();
 		$this->go_to( get_permalink( $post ) );
 		setup_postdata( $post );
 
@@ -272,8 +292,8 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	 * $more should not be true when the set-up post is not the same as the current post.
 	 */
 	public function test_more_when_on_single() {
-		$post1 = $this->factory->post->create_and_get();
-		$post2 = $this->factory->post->create_and_get();
+		$post1 = self::factory()->post->create_and_get();
+		$post2 = self::factory()->post->create_and_get();
 		$this->go_to( get_permalink( $post1 ) );
 		setup_postdata( $post2 );
 
@@ -286,8 +306,8 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	 * $more should not be true when the set-up post is not the same as the current page.
 	 */
 	public function test_more_when_on_page() {
-		$post = $this->factory->post->create_and_get();
-		$page = $this->factory->post->create_and_get( array(
+		$post = self::factory()->post->create_and_get();
+		$page = self::factory()->post->create_and_get( array(
 			'post_type' => 'page',
 		) );
 		$this->go_to( get_permalink( $page ) );
@@ -300,7 +320,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	 * @ticket 20904
 	 */
 	public function test_more_when_on_feed() {
-		$post = $this->factory->post->create_and_get();
+		$post = self::factory()->post->create_and_get();
 		$this->go_to( '/?feed=rss' );
 		setup_postdata( $post );
 
@@ -312,7 +332,7 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	 * @ticket 25349
 	 */
 	public function test_secondary_query_more() {
-		$post = $this->factory->post->create_and_get();
+		$post = self::factory()->post->create_and_get();
 		$this->go_to( get_permalink( $post ) );
 		setup_postdata( $post );
 
@@ -344,10 +364,10 @@ class Tests_Query_SetupPostdata extends WP_UnitTestCase {
 	 * global $post should use the content of $a_post rather then the global post.
 	 */
 	function test_setup_postdata_loop() {
-		$post_id = $this->factory->post->create( array( 'post_content' => 'global post' ) );
+		$post_id = self::factory()->post->create( array( 'post_content' => 'global post' ) );
 		$GLOBALS['wp_query']->post = $GLOBALS['post'] = get_post( $post_id );
 
-		$ids = $this->factory->post->create_many(5);
+		$ids = self::factory()->post->create_many(5);
 		foreach ( $ids as $id ) {
 			$page = get_post( $id );
 			if ( $page ) {

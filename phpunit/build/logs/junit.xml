@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite name="" tests="1" assertions="4" failures="1" errors="0" time="0.161447">
-    <testsuite name="Tests_Post_Output" file="C:\svn\wordpress-develop\tests\phpunit\tests\post\output.php" tests="1" assertions="4" failures="1" errors="0" time="0.161447">
-      <testcase name="test_the_content" class="Tests_Post_Output" file="C:\svn\wordpress-develop\tests\phpunit\tests\post\output.php" line="37" assertions="4" time="0.161447">
-        <failure type="PHPUnit_Framework_ExpectationFailedException">Tests_Post_Output::test_the_content
-Failed asserting that two strings are equal.
---- Expected
-+++ Actual
-@@ @@
--'&lt;p&gt;&lt;i&gt;This is the excerpt.&lt;/i&gt;&lt;br /&gt;
--&lt;span id="more-3"&gt;&lt;/span&gt;&lt;br /&gt;
-+'&lt;p&gt;&lt;i&gt;This is the excerpt.&lt;/i&gt;
-+&lt;span id="more-3"&gt;&lt;/span&gt;
- This is the &lt;b&gt;body&lt;/b&gt;.&lt;/p&gt;'
+  <testsuite name="Tests_User_WpSetCurrentUser" file="C:\svn\wordpress-develop\tests\phpunit\tests\user\wpSetCurrentUser.php" tests="4" assertions="9" failures="1" errors="1" time="1.071477">
+    <testcase name="test_set_by_id" class="Tests_User_WpSetCurrentUser" file="C:\svn\wordpress-develop\tests\phpunit\tests\user\wpSetCurrentUser.php" line="8" assertions="3" time="0.617184"/>
+    <testcase name="test_name_should_be_ignored_if_id_is_not_null" class="Tests_User_WpSetCurrentUser" file="C:\svn\wordpress-develop\tests\phpunit\tests\user\wpSetCurrentUser.php" line="18" assertions="3" time="0.121032"/>
+    <testcase name="test_should_set_by_name_if_id_is_null_and_current_user_is_nonempty" class="Tests_User_WpSetCurrentUser" file="C:\svn\wordpress-develop\tests\phpunit\tests\user\wpSetCurrentUser.php" line="28" assertions="1" time="0.183712">
+      <error type="PHPUnit_Framework_Error_Warning">Tests_User_WpSetCurrentUser::test_should_set_by_name_if_id_is_null_and_current_user_is_nonempty
+fopen(C:\svn\wordpress-develop/src/bwtrace.loh): failed to open stream: Permission denied
 
-C:\svn\wordpress-develop\tests\phpunit\tests\post\output.php:57
+C:\apache\htdocs\wordpress\wp-content\plugins\oik-bwtrace\includes\bwtrace.php:749
+C:\apache\htdocs\wordpress\wp-content\plugins\oik-bwtrace\includes\bwtrace.php:709
+C:\apache\htdocs\wordpress\wp-content\plugins\oik-bwtrace\includes\bwtrace.php:622
+C:\apache\htdocs\wordpress\wp-content\plugins\oik-bwtrace\includes\bwtrace.php:1023
+C:\apache\htdocs\wordpress\wp-content\plugins\oik\libs\bwtrace.php:92
+C:\svn\wordpress-develop\tests\phpunit\tests\user\wpSetCurrentUser.php:38
+</error>
+    </testcase>
+    <testcase name="test_should_set_by_name_if_id_is_null" class="Tests_User_WpSetCurrentUser" file="C:\svn\wordpress-develop\tests\phpunit\tests\user\wpSetCurrentUser.php" line="50" assertions="2" time="0.149549">
+      <failure type="PHPUnit_Framework_ExpectationFailedException">Tests_User_WpSetCurrentUser::test_should_set_by_name_if_id_is_null
+Failed asserting that 0 is identical to 6.
+
+C:\svn\wordpress-develop\tests\phpunit\tests\user\wpSetCurrentUser.php:60
 </failure>
-      </testcase>
-    </testsuite>
+    </testcase>
   </testsuite>
 </testsuites>

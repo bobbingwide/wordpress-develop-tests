@@ -35,27 +35,52 @@ class Tests_Formatting_SanitizeTitleWithDashes extends WP_UnitTestCase {
 		$this->assertEquals("penn-teller-bull", sanitize_title_with_dashes("penn & teller bull"));
 	}
 
-	/**
-	 * @ticket 10823
-	 */
-	function test_strips_entities() {
+	public function test_strips_nbsp_ndash_and_amp() {
 		$this->assertEquals("no-entities-here", sanitize_title_with_dashes("No &nbsp; Entities &ndash; Here &amp;"));
+	}
+
+	public function test_strips_encoded_ampersand() {
 		$this->assertEquals("one-two", sanitize_title_with_dashes("One &amp; Two", '', 'save'));
+	}
+
+	public function test_strips_url_encoded_ampersand() {
 		$this->assertEquals("one-two", sanitize_title_with_dashes("One &#123; Two;", '', 'save'));
-		$this->assertEquals("one-two", sanitize_title_with_dashes("One & Two;", '', 'save'));
+	}
+
+	public function test_strips_trademark_symbol() {
 		$this->assertEquals("one-two", sanitize_title_with_dashes("One Two™;", '', 'save'));
+	}
+
+	public function test_strips_unencoded_ampersand_followed_by_encoded_ampersand() {
 		$this->assertEquals("one-two", sanitize_title_with_dashes("One &&amp; Two;", '', 'save'));
+	}
+
+	public function test_strips_unencoded_ampersand_when_not_surrounded_by_spaces() {
 		$this->assertEquals("onetwo", sanitize_title_with_dashes("One&Two", '', 'save'));
-		$this->assertEquals("onetwo-test", sanitize_title_with_dashes("One&Two Test;", '', 'save'));
 	}
 
 	function test_replaces_nbsp() {
 		$this->assertEquals("dont-break-the-space", sanitize_title_with_dashes("don't break the space", '', 'save'));
 	}
 
+	/**
+	 * @ticket 31790
+	 */
+	function test_replaces_nbsp_entities() {
+		$this->assertEquals("dont-break-the-space", sanitize_title_with_dashes("don't&nbsp;break&#160;the&nbsp;space", '', 'save'));
+	}
+
 	function test_replaces_ndash_mdash() {
 		$this->assertEquals("do-the-dash", sanitize_title_with_dashes("Do – the Dash", '', 'save'));
 		$this->assertEquals("do-the-dash", sanitize_title_with_dashes("Do the — Dash", '', 'save'));
+	}
+
+	/**
+	 * @ticket 31790
+	 */
+	function test_replaces_ndash_mdash_entities() {
+		$this->assertEquals("do-the-dash", sanitize_title_with_dashes("Do &ndash; the &#8211; Dash", '', 'save'));
+		$this->assertEquals("do-the-dash", sanitize_title_with_dashes("Do &mdash; the &#8212; Dash", '', 'save'));
 	}
 
 	function test_replaces_iexcel_iquest() {

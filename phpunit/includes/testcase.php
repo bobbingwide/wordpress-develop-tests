@@ -3,6 +3,15 @@
 require_once dirname( __FILE__ ) . '/factory.php';
 require_once dirname( __FILE__ ) . '/trac.php';
 
+/**
+ * Defines a basic fixture to run multiple tests.
+ *
+ * Resets the state of the WordPress installation before and after every test.
+ *
+ * Includes utility functions and assertions useful for testing WordPress.
+ *
+ * All WordPress unit tests should inherit from this class.
+ */
 class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 
 	protected static $forced_tickets = array();
@@ -14,10 +23,64 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 	protected static $hooks_saved = array();
 	protected static $ignore_files;
 
-	/**
-	 * @var WP_UnitTest_Factory
-	 */
-	protected $factory;
+	function __isset( $name ) {
+		return 'factory' === $name;
+ 	}
+
+	function __get( $name ) {
+		if ( 'factory' === $name ) {
+			return self::factory();
+ 	    }
+ 	}
+
+	protected static function factory() {
+		static $factory = null;
+		if ( ! $factory ) {
+			$factory = new WP_UnitTest_Factory();
+		}
+		return $factory;
+	}
+
+	public static function get_called_class() {
+		if ( function_exists( 'get_called_class' ) ) {
+			return get_called_class();
+		}
+
+		// PHP 5.2 only
+		$backtrace = debug_backtrace();
+		// [0] WP_UnitTestCase::get_called_class()
+		// [1] WP_UnitTestCase::setUpBeforeClass()
+		if ( 'call_user_func' ===  $backtrace[2]['function'] ) {
+			return $backtrace[2]['args'][0][0];
+		}
+		return $backtrace[2]['class'];
+	}
+
+	public static function setUpBeforeClass() {
+		parent::setUpBeforeClass();
+
+		$c = self::get_called_class();
+		if ( ! method_exists( $c, 'wpSetUpBeforeClass' ) ) {
+			return;
+		}
+
+		call_user_func( array( $c, 'wpSetUpBeforeClass' ), self::factory() );
+
+		self::commit_transaction();
+	}
+
+	public static function tearDownAfterClass() {
+		parent::tearDownAfterClass();
+
+		$c = self::get_called_class();
+		if ( ! method_exists( $c, 'wpTearDownAfterClass' ) ) {
+			return;
+		}
+
+		call_user_func( array( $c, 'wpTearDownAfterClass' ) );
+
+		self::commit_transaction();
+	}
 
 	function setUp() {
 		set_time_limit(0);
@@ -30,12 +93,11 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 			$this->_backup_hooks();
 		}
 
-		global $wpdb;
+		global $wpdb, $wp_rewrite;
 		$wpdb->suppress_errors = false;
 		$wpdb->show_errors = true;
 		$wpdb->db_connect();
 		ini_set('display_errors', 1 );
-		$this->factory = new WP_UnitTest_Factory;
 		$this->clean_up_global_scope();
 
 		/*
@@ -47,6 +109,12 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 		if ( defined( 'WP_RUN_CORE_TESTS' ) && WP_RUN_CORE_TESTS ) {
 			$this->reset_post_types();
 			$this->reset_taxonomies();
+			$this->reset_post_statuses();
+			$this->reset__SERVER();
+
+			if ( $wp_rewrite->permalink_structure ) {
+				$this->set_permalink_structure( '' );
+			}
 		}
 
 		$this->start_transaction();
@@ -54,9 +122,22 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 		add_filter( 'wp_die_handler', array( $this, 'get_wp_die_handler' ) );
 	}
 
-	function tearDown() {
-		global $wpdb, $wp_query, $post;
+	/**
+	 * Detect post-test failure conditions.
+	 *
+	 * We use this method to detect expectedDeprecated and expectedIncorrectUsage annotations.
+	 *
+	 * @since 4.2.0
+	 */
+	protected function assertPostConditions() {
 		$this->expectedDeprecated();
+	}
+
+	/**
+	 * After a test method runs, reset any state in WordPress the test method might have changed.
+	 */
+	function tearDown() {
+		global $wpdb, $wp_query, $wp, $post;
 		$wpdb->query( 'ROLLBACK' );
 		if ( is_multisite() ) {
 			while ( ms_is_switched() ) {
@@ -64,6 +145,7 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 			}
 		}
 		$wp_query = new WP_Query();
+		$wp = new WP();
 		$post = null;
 		remove_theme_support( 'html5' );
 		remove_filter( 'query', array( $this, '_create_temporary_tables' ) );
@@ -105,6 +187,22 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 			_unregister_taxonomy( $tax );
 		}
 		create_initial_taxonomies();
+	}
+
+	/**
+	 * Unregister non-built-in post statuses.
+	 */
+	protected function reset_post_statuses() {
+		foreach ( get_post_stati( array( '_builtin' => false ) ) as $post_status ) {
+			_unregister_post_status( $post_status );
+		}
+	}
+
+	/**
+	 * Reset `$_SERVER` variables
+	 */
+	protected function reset__SERVER() {
+		tests_reset__SERVER();
 	}
 
 	/**
@@ -194,6 +292,10 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 	}
 
 	function wp_die_handler( $message ) {
+		if ( ! is_scalar( $message ) ) {
+			$message = '0';
+		}
+
 		throw new WPDieException( $message );
 	}
 
@@ -207,32 +309,64 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 		}
 		add_action( 'deprecated_function_run', array( $this, 'deprecated_function_run' ) );
 		add_action( 'deprecated_argument_run', array( $this, 'deprecated_function_run' ) );
+		add_action( 'deprecated_hook_run', array( $this, 'deprecated_function_run' ) );
 		add_action( 'doing_it_wrong_run', array( $this, 'doing_it_wrong_run' ) );
 		add_action( 'deprecated_function_trigger_error', '__return_false' );
 		add_action( 'deprecated_argument_trigger_error', '__return_false' );
+		add_action( 'deprecated_hook_trigger_error',     '__return_false' );
 		add_action( 'doing_it_wrong_trigger_error',      '__return_false' );
 	}
 
 	function expectedDeprecated() {
+		$errors = array();
+
 		$not_caught_deprecated = array_diff( $this->expected_deprecated, $this->caught_deprecated );
 		foreach ( $not_caught_deprecated as $not_caught ) {
-			$this->fail( "Failed to assert that $not_caught triggered a deprecated notice" );
+			$errors[] = "Failed to assert that $not_caught triggered a deprecated notice";
 		}
 
 		$unexpected_deprecated = array_diff( $this->caught_deprecated, $this->expected_deprecated );
 		foreach ( $unexpected_deprecated as $unexpected ) {
-			$this->fail( "Unexpected deprecated notice for $unexpected" );
+			$errors[] = "Unexpected deprecated notice for $unexpected";
 		}
 
 		$not_caught_doing_it_wrong = array_diff( $this->expected_doing_it_wrong, $this->caught_doing_it_wrong );
 		foreach ( $not_caught_doing_it_wrong as $not_caught ) {
-			$this->fail( "Failed to assert that $not_caught triggered an incorrect usage notice" );
+			$errors[] = "Failed to assert that $not_caught triggered an incorrect usage notice";
 		}
 
 		$unexpected_doing_it_wrong = array_diff( $this->caught_doing_it_wrong, $this->expected_doing_it_wrong );
 		foreach ( $unexpected_doing_it_wrong as $unexpected ) {
-			$this->fail( "Unexpected incorrect usage notice for $unexpected" );
+			$errors[] = "Unexpected incorrect usage notice for $unexpected";
 		}
+
+		if ( ! empty( $errors ) ) {
+			$this->fail( implode( "\n", $errors ) );
+		}
+	}
+
+	/**
+	 * Declare an expected `_deprecated_function()` or `_deprecated_argument()` call from within a test.
+	 *
+	 * @since 4.2.0
+	 *
+	 * @param string $deprecated Name of the function, method, class, or argument that is deprecated. Must match
+	 *                           first parameter of the `_deprecated_function()` or `_deprecated_argument()` call.
+	 */
+	public function setExpectedDeprecated( $deprecated ) {
+		array_push( $this->expected_deprecated, $deprecated );
+	}
+
+	/**
+	 * Declare an expected `_doing_it_wrong()` call from within a test.
+	 *
+	 * @since 4.2.0
+	 *
+	 * @param string $deprecated Name of the function, method, or class that appears in the first argument of the
+	 *                           source `_doing_it_wrong()` call.
+	 */
+	public function setExpectedIncorrectUsage( $doing_it_wrong ) {
+		array_push( $this->expected_doing_it_wrong, $doing_it_wrong );
 	}
 
 	function deprecated_function_run( $function ) {
@@ -249,6 +383,13 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 		$this->assertInstanceOf( 'WP_Error', $actual, $message );
 	}
 
+	function assertNotWPError( $actual, $message = '' ) {
+		if ( is_wp_error( $actual ) && '' === $message ) {
+			$message = $actual->get_error_message();
+		}
+		$this->assertNotInstanceOf( 'WP_Error', $actual, $message );
+	}
+
 	function assertEqualFields( $object, $fields ) {
 		foreach( $fields as $field_name => $field_value ) {
 			if ( $object->$field_name != $field_value ) {
@@ -262,10 +403,22 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 	}
 
 	function assertEqualSets( $expected, $actual ) {
-		$this->assertEquals( array(), array_diff( $expected, $actual ) );
-		$this->assertEquals( array(), array_diff( $actual, $expected ) );
+		sort( $expected );
+		sort( $actual );
+		$this->assertEquals( $expected, $actual );
 	}
 
+	function assertEqualSetsWithIndex( $expected, $actual ) {
+		ksort( $expected );
+		ksort( $actual );
+		$this->assertEquals( $expected, $actual );
+	}
+
+	/**
+	 * Modify WordPress's query internals as if a given URL has been requested.
+	 *
+	 * @param string $url The URL for the request.
+	 */
 	function go_to( $url ) {
 		// note: the WP and WP_Query classes like to silently fetch parameters
 		// from all over the place (globals, GET, etc), which makes it tricky
@@ -276,7 +429,7 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 		}
 		$parts = parse_url($url);
 		if (isset($parts['scheme'])) {
-			$req = $parts['path'];
+			$req = isset( $parts['path'] ) ? $parts['path'] : '';
 			if (isset($parts['query'])) {
 				$req .= '?' . $parts['query'];
 				// parse the url query vars into $_GET
@@ -296,7 +449,14 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 		unset($GLOBALS['wp_query'], $GLOBALS['wp_the_query']);
 		$GLOBALS['wp_the_query'] = new WP_Query();
 		$GLOBALS['wp_query'] = $GLOBALS['wp_the_query'];
+
+		$public_query_vars  = $GLOBALS['wp']->public_query_vars;
+		$private_query_vars = $GLOBALS['wp']->private_query_vars;
+
 		$GLOBALS['wp'] = new WP();
+		$GLOBALS['wp']->public_query_vars  = $public_query_vars;
+		$GLOBALS['wp']->private_query_vars = $private_query_vars;
+
 		_cleanup_query_vars();
 
 		$GLOBALS['wp']->main($parts['query']);
@@ -304,6 +464,12 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 
 	protected function checkRequirements() {
 		parent::checkRequirements();
+
+		// Core tests no longer check against open Trac tickets, but others using WP_UnitTestCase may do so.
+		if ( defined( 'WP_RUN_CORE_TESTS' ) && WP_RUN_CORE_TESTS ) {
+			return;
+		}
+
 		if ( WP_TESTS_FORCE_KNOWN_BUGS )
 			return;
 		$tickets = PHPUnit_Util_Test::getTickets( get_class( $this ), $this->getName( false ) );
@@ -395,10 +561,33 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 	function assertQueryTrue(/* ... */) {
 		global $wp_query;
 		$all = array(
-			'is_single', 'is_preview', 'is_page', 'is_archive', 'is_date', 'is_year', 'is_month', 'is_day', 'is_time',
-			'is_author', 'is_category', 'is_tag', 'is_tax', 'is_search', 'is_feed', 'is_comment_feed', 'is_trackback',
-			'is_home', 'is_404', 'is_comments_popup', 'is_paged', 'is_admin', 'is_attachment', 'is_singular', 'is_robots',
-			'is_posts_page', 'is_post_type_archive',
+			'is_404',
+			'is_admin',
+			'is_archive',
+			'is_attachment',
+			'is_author',
+			'is_category',
+			'is_comment_feed',
+			'is_date',
+			'is_day',
+			'is_embed',
+			'is_feed',
+			'is_home',
+			'is_month',
+			'is_page',
+			'is_paged',
+			'is_post_type_archive',
+			'is_posts_page',
+			'is_preview',
+			'is_robots',
+			'is_search',
+			'is_single',
+			'is_singular',
+			'is_tag',
+			'is_tax',
+			'is_time',
+			'is_trackback',
+			'is_year',
 		);
 		$true = func_get_args();
 
@@ -421,9 +610,9 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 
 		$message = '';
 		if ( count($not_true) )
-			$message .= implode( $not_true, ', ' ) . ' should be true. ';
+			$message .= implode( $not_true, ', ' ) . ' is expected to be true. ';
 		if ( count($not_false) )
-			$message .= implode( $not_false, ', ' ) . ' should be false.';
+			$message .= implode( $not_false, ', ' ) . ' is expected to be false.';
 		$this->assertTrue( $passed, $message );
 	}
 
@@ -477,11 +666,88 @@ class WP_UnitTestCase extends PHPUnit_Framework_TestCase {
 		return $files;
 	}
 
+	function delete_folders( $path ) {
+		$this->matched_dirs = array();
+		if ( ! is_dir( $path ) ) {
+			return;
+		}
+
+		$this->scandir( $path );
+		foreach ( array_reverse( $this->matched_dirs ) as $dir ) {
+			rmdir( $dir );
+		}
+		rmdir( $path );
+	}
+
+	function scandir( $dir ) {
+		foreach ( scandir( $dir ) as $path ) {
+			if ( 0 !== strpos( $path, '.' ) && is_dir( $dir . '/' . $path ) ) {
+				$this->matched_dirs[] = $dir . '/' . $path;
+				$this->scandir( $dir . '/' . $path );
+			}
+		}
+	}
+
 	/**
 	 * Helper to Convert a microtime string into a float
 	 */
 	protected function _microtime_to_float($microtime ){
 		$time_array = explode( ' ', $microtime );
 		return array_sum( $time_array );
+	}
+
+	/**
+	 * Multisite-agnostic way to delete a user from the database.
+	 *
+	 * @since 4.3.0
+	 */
+	public static function delete_user( $user_id ) {
+		if ( is_multisite() ) {
+			return wpmu_delete_user( $user_id );
+		} else {
+			return wp_delete_user( $user_id );
+		}
+	}
+
+	/**
+	 * Utility method that resets permalinks and flushes rewrites.
+	 *
+	 * @since 4.4.0
+	 *
+	 * @global WP_Rewrite $wp_rewrite
+	 *
+	 * @param string $structure Optional. Permalink structure to set. Default empty.
+	 */
+	public function set_permalink_structure( $structure = '' ) {
+		global $wp_rewrite;
+
+		$wp_rewrite->init();
+		$wp_rewrite->set_permalink_structure( $structure );
+		$wp_rewrite->flush_rules();
+	}
+
+	function _make_attachment($upload, $parent_post_id = 0) {
+		$type = '';
+		if ( !empty($upload['type']) ) {
+			$type = $upload['type'];
+		} else {
+			$mime = wp_check_filetype( $upload['file'] );
+			if ($mime)
+				$type = $mime['type'];
+		}
+
+		$attachment = array(
+			'post_title' => basename( $upload['file'] ),
+			'post_content' => '',
+			'post_type' => 'attachment',
+			'post_parent' => $parent_post_id,
+			'post_mime_type' => $type,
+			'guid' => $upload[ 'url' ],
+		);
+
+		// Save the data
+		$id = wp_insert_attachment( $attachment, $upload[ 'file' ], $parent_post_id );
+		wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $upload['file'] ) );
+		return $id;
 	}
 }

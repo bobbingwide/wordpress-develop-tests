@@ -1,5 +1,21 @@
 <?php
 
+/**
+ * Resets various `$_SERVER` variables that can get altered during tests.
+ */
+function tests_reset__SERVER() {
+	$_SERVER['HTTP_HOST']       = WP_TESTS_DOMAIN;
+	$_SERVER['REMOTE_ADDR']     = '127.0.0.1';
+	$_SERVER['REQUEST_METHOD']  = 'GET';
+	$_SERVER['REQUEST_URI']     = '';
+	$_SERVER['SERVER_NAME']     = WP_TESTS_DOMAIN;
+	$_SERVER['SERVER_PORT']     = '80';
+	$_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
+
+	unset( $_SERVER['HTTP_REFERER'] );
+	unset( $_SERVER['HTTPS'] );
+}
+
 // For adding hooks before loading WP
 function tests_add_filter($tag, $function_to_add, $priority = 10, $accepted_args = 1) {
 	global $wp_filter, $merged_filters;
@@ -102,4 +118,39 @@ function _wp_die_handler_txt( $message, $title, $args ) {
 			echo "\t $k : $v\n";
 		}
 	}
+}
+
+/**
+ * Set a permalink structure.
+ *
+ * Hooked as a callback to the 'populate_options' action, we use this function to set a permalink structure during
+ * `wp_install()`, so that WP doesn't attempt to do a time-consuming remote request.
+ *
+ * @since 4.2.0
+ */
+function _set_default_permalink_structure_for_tests() {
+	update_option( 'permalink_structure', '/%year%/%monthnum%/%day%/%postname%/' );
+}
+
+/**
+ * Helper used with the `upload_dir` filter to remove the /year/month sub directories from the uploads path and URL.
+ */
+function _upload_dir_no_subdir( $uploads ) {
+	$subdir = $uploads['subdir'];
+
+	$uploads['subdir'] = '';
+	$uploads['path'] = str_replace( $subdir, '', $uploads['path'] );
+	$uploads['url'] = str_replace( $subdir, '', $uploads['url'] );
+
+	return $uploads;
+}
+
+/**
+ * Helper used with the `upload_dir` filter to set https upload URL.
+ */ 
+function _upload_dir_https( $uploads ) {
+	$uploads['url'] = str_replace( 'http://', 'https://', $uploads['url'] );
+	$uploads['baseurl'] = str_replace( 'http://', 'https://', $uploads['baseurl'] );
+
+	return $uploads;
 }

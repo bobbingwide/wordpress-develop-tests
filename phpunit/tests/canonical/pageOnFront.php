@@ -6,28 +6,20 @@
  * @group query
  */
 class Tests_Canonical_PageOnFront extends WP_Canonical_UnitTestCase {
-	public static function setUpBeforeClass() {
-		self::generate_shared_fixtures();
+	public static function wpSetUpBeforeClass( $factory ) {
+		self::generate_shared_fixtures( $factory );
 	}
 
-	public static function tearDownAfterClass() {
+	public static function wpTearDownAfterClass() {
 		self::delete_shared_fixtures();
 	}
 
 	function setUp() {
 		parent::setUp();
-		global $wp_rewrite;
-		update_option( 'show_on_front', 'page' );
-		update_option( 'page_for_posts', $this->factory->post->create( array( 'post_title' => 'blog-page', 'post_type' => 'page' ) ) );
-		update_option( 'page_on_front', $this->factory->post->create( array( 'post_title' => 'front-page', 'post_type' => 'page' ) ) );
-		$wp_rewrite->init();
-		$wp_rewrite->flush_rules();
-	}
 
-	function tearDown() {
-		global $wp_rewrite;
-		parent::tearDown();
-		$wp_rewrite->init();
+		update_option( 'show_on_front', 'page' );
+		update_option( 'page_for_posts', self::factory()->post->create( array( 'post_title' => 'blog-page', 'post_type' => 'page' ) ) );
+		update_option( 'page_on_front', self::factory()->post->create( array( 'post_title' => 'front-page', 'post_type' => 'page', 'post_content' => "Page 1\n<!--nextpage-->\nPage 2"  ) ) );
 	}
 
 	/**
@@ -47,11 +39,17 @@ class Tests_Canonical_PageOnFront extends WP_Canonical_UnitTestCase {
 		 * [3]: (optional) The ticket the test refers to, Can be skipped if unknown.
 		 */
 		 return array(
-			 // Check against an odd redirect
-			 array( '/page/2/', '/page/2/', 20385 ),
-			 // The page designated as the front page should redirect to the front of the site
-			 array( '/front-page/', '/' ),
-			 array( '/blog-page/?paged=2', '/blog-page/page/2/' ),
+			// Check against an odd redirect
+			array( '/page/2/', '/page/2/' ),
+			array( '/?page=2', '/page/2/' ),
+			array( '/page/1/', '/' ),
+			array( '/?page=1', '/' ),
+
+			// The page designated as the front page should redirect to the front of the site
+			array( '/front-page/', '/' ),
+			array( '/front-page/2/', '/page/2/' ),
+			array( '/front-page/?page=2', '/page/2/' ),
+			array( '/blog-page/?paged=2', '/blog-page/page/2/' ),
 		 );
 	}
 }

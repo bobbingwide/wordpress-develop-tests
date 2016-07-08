@@ -85,6 +85,11 @@ class Tests_Theme extends WP_UnitTestCase {
 		$themes = get_themes();
 		// Generic tests that should hold true for any theme
 		foreach ( $themes as $k => $theme ) {
+			// Don't run these checks for custom themes.
+			if ( empty( $theme['Author'] ) || false === strpos( $theme['Author'], 'WordPress' ) ) {
+				continue;
+			}
+
 			$this->assertEquals( $theme['Name'], $k );
 			$this->assertNotEmpty( $theme['Title'] );
 
@@ -171,6 +176,7 @@ class Tests_Theme extends WP_UnitTestCase {
 	 * @ticket 29925
 	 */
 	function test_default_theme_in_default_theme_list() {
+		$this->markTestSkipped( 'Core repository inclusion was stopped after Twenty Fifteen' );
 		if ( 'twenty' === substr( WP_DEFAULT_THEME, 0, 6 ) ) {
 			$this->assertContains( WP_DEFAULT_THEME, $this->default_themes );
 		}
@@ -265,12 +271,6 @@ class Tests_Theme extends WP_UnitTestCase {
 				$this->assertEquals(get_search_template(), get_query_template('search'));
 				$this->assertEquals(get_single_template(), get_query_template('single'));
 				$this->assertEquals(get_attachment_template(), get_query_template('attachment'));
-
-				// this one doesn't behave like the others
-				if (get_query_template('comments-popup'))
-					$this->assertEquals(get_comments_popup_template(), get_query_template('comments-popup'));
-				else
-					$this->assertEquals(get_comments_popup_template(), ABSPATH.'wp-includes/theme-compat/comments-popup.php');
 
 				$this->assertEquals(get_tag_template(), get_query_template('tag'));
 

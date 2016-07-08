@@ -365,23 +365,6 @@ class Tests_Formatting_MakeClickable extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @ticket 16859
-	 */
-	function test_square_brackets() {
-		$urls_before = array(
-			'http://example.com/?foo[bar]=baz',
-			'http://example.com/?baz=bar&foo[bar]=baz',
-		);
-		$urls_expected = array(
-			'<a href="http://example.com/?foo%5Bbar%5D=baz" rel="nofollow">http://example.com/?foo%5Bbar%5D=baz</a>',
-			'<a href="http://example.com/?baz=bar&#038;foo%5Bbar%5D=baz" rel="nofollow">http://example.com/?baz=bar&#038;foo%5Bbar%5D=baz</a>',
-		);
-		foreach ($urls_before as $key => $url) {
-			$this->assertEquals( $urls_expected[$key], make_clickable( $url ) );
-		}
-	}
-
-	/**
 	 * @ticket 19028
 	 */
 	function test_line_break_in_existing_clickable_link() {
@@ -389,4 +372,30 @@ class Tests_Formatting_MakeClickable extends WP_UnitTestCase {
 				  href='mailto:someone@example.com'>someone@example.com</a>";
 		$this->assertEquals( $html, make_clickable( $html ) );
 	}
+
+	/**
+	 * @dataProvider data_script_and_style_tags
+	 * @ticket 30162
+	 */
+	public function test_dont_link_script_and_style_tags( $tag ) {
+		$this->assertEquals( $tag, make_clickable( $tag ) );
+	}
+
+	public function data_script_and_style_tags() {
+		return array(
+			array(
+				'<script>http://wordpress.org</script>',
+			),
+			array(
+				'<style>http://wordpress.org</style>',
+			),
+			array(
+				'<script type="text/javascript">http://wordpress.org</script>',
+			),
+			array(
+				'<style type="text/css">http://wordpress.org</style>',
+			),
+		);
+	}
+
 }

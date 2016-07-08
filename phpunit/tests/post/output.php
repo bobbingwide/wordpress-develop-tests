@@ -41,7 +41,7 @@ class Tests_Post_Output extends WP_UnitTestCase {
 This is the <b>body</b>.
 EOF;
 
-		$post_id = $this->factory->post->create( compact( 'post_content' ) );
+		$post_id = self::factory()->post->create( compact( 'post_content' ) );
 
 		$expected = <<<EOF
 <p><i>This is the excerpt.</i><br />
@@ -76,7 +76,7 @@ baz = bar
 
 EOF;
 
-		$post_id = $this->factory->post->create( compact( 'post_content' ) );
+		$post_id = self::factory()->post->create( compact( 'post_content' ) );
 		$this->go_to( get_permalink( $post_id ) );
 		$this->assertTrue( is_single() );
 		$this->assertTrue( have_posts() );
@@ -114,7 +114,7 @@ EOF;
 
 EOF;
 
-		$post_id = $this->factory->post->create( compact( 'post_content' ) );
+		$post_id = self::factory()->post->create( compact( 'post_content' ) );
 		$this->go_to( get_permalink( $post_id ) );
 		$this->assertTrue( is_single() );
 		$this->assertTrue( have_posts() );
@@ -136,7 +136,7 @@ EOF;
 <p><span class="Z3988" title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Ajournal&amp;rft.aulast=Mariat&amp;rft.aufirst=Denis&amp;rft. au=Denis+Mariat&amp;rft.au=Sead+Taourit&amp;rft.au=G%C3%A9rard+Gu%C3%A9rin&amp; rft.title=Genetics+Selection+Evolution&amp;rft.atitle=&amp;rft.date=2003&amp;rft. volume=35&amp;rft.issue=1&amp;rft.spage=119&amp;rft.epage=133&amp;rft.genre=article&amp; rft.id=info:DOI/10.1051%2Fgse%3A2002039"></span>Mariat, D., Taourit, S., GuÃ©rin, G. (2003). . <span style="font-style: italic">Genetics Selection Evolution, 35</span>(1), 119-133. DOI: <a rev="review" href="http://dx.doi.org/10.1051/gse:2002039">10.1051/gse:2002039</a></p>
 EOF;
 
-		$post_id = $this->factory->post->create( compact( 'post_content' ) );
+		$post_id = self::factory()->post->create( compact( 'post_content' ) );
 		$this->go_to( get_permalink( $post_id ) );
 		$this->assertTrue( is_single() );
 		$this->assertTrue( have_posts() );
@@ -160,7 +160,7 @@ EOF;
 <p><span title="My friends: Alice, Bob and Carol">foo</span></p>
 EOF;
 
-		$post_id = $this->factory->post->create( compact( 'post_content' ) );
+		$post_id = self::factory()->post->create( compact( 'post_content' ) );
 		$this->go_to( get_permalink( $post_id ) );
 		$this->assertTrue( is_single() );
 		$this->assertTrue( have_posts() );
@@ -171,4 +171,50 @@ EOF;
 		kses_remove_filters();
 	}
 
+	/**
+	 * @ticket 27246
+	 */
+	public function test_the_excerpt_invalid_post() {
+		$this->assertSame( '', get_echo( 'the_excerpt' ) );
+		$this->assertSame( '', get_the_excerpt() );
+	}
+
+	/**
+	 * @ticket 27246
+	 * @expectedDeprecated get_the_excerpt
+	 */
+	public function test_the_excerpt_deprecated() {
+		$this->assertSame( '', get_the_excerpt( true ) );
+		$this->assertSame( '', get_the_excerpt( false ) );
+	}
+
+	/**
+	 * @ticket 27246
+	 */
+	public function test_the_excerpt() {
+		$GLOBALS['post'] = self::factory()->post->create_and_get( array( 'post_excerpt' => 'Post excerpt' ) );
+		$this->assertSame( "<p>Post excerpt</p>\n", get_echo( 'the_excerpt' ) );
+		$this->assertSame( 'Post excerpt', get_the_excerpt() );
+	}
+
+	/**
+	 * @ticket 27246
+	 * @ticket 35486
+	 */
+	public function test_the_excerpt_password_protected_post() {
+		$post = self::factory()->post->create_and_get( array( 'post_excerpt' => 'Post excerpt', 'post_password' => '1234' ) );
+		$this->assertSame( 'There is no excerpt because this is a protected post.', get_the_excerpt( $post ) );
+
+		$GLOBALS['post'] = $post;
+		$this->assertSame( "<p>There is no excerpt because this is a protected post.</p>\n", get_echo( 'the_excerpt' ) );
+	}
+
+	/**
+	 * @ticket 27246
+	 */
+	public function test_the_excerpt_specific_post() {
+		$GLOBALS['post'] = self::factory()->post->create_and_get( array( 'post_excerpt' => 'Foo' ) );
+		$post_id = self::factory()->post->create( array( 'post_excerpt' => 'Bar' ) );
+		$this->assertSame( 'Bar', get_the_excerpt( $post_id ) );
+	}
 }

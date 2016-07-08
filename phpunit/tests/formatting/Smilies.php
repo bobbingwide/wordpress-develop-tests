@@ -16,15 +16,15 @@ class Tests_Formatting_Smilies extends WP_UnitTestCase {
 		return array (
 			array (
 				'Lorem ipsum dolor sit amet mauris ;-) Praesent gravida sodales. :lol: Vivamus nec diam in faucibus eu, bibendum varius nec, imperdiet purus est, at augue at lacus malesuada elit dapibus a, :eek: mauris. Cras mauris viverra elit. Nam laoreet viverra. Pellentesque tortor. Nam libero ante, porta urna ut turpis. Nullam wisi magna, :mrgreen: tincidunt nec, sagittis non, fringilla enim. Nam consectetuer nec, ullamcorper pede eu dui odio consequat vel, vehicula tortor quis pede turpis cursus quis, egestas ipsum ultricies ut, eleifend velit. Mauris vestibulum iaculis. Sed in nunc. Vivamus elit porttitor egestas. Mauris purus :?:',
-				'Lorem ipsum dolor sit amet mauris <img src="' . $includes_path . 'icon_wink.gif" alt=";-)" class="wp-smiley" /> Praesent gravida sodales. <img src="' . $includes_path . 'icon_lol.gif" alt=":lol:" class="wp-smiley" /> Vivamus nec diam in faucibus eu, bibendum varius nec, imperdiet purus est, at augue at lacus malesuada elit dapibus a, <img src="' . $includes_path . 'icon_surprised.gif" alt=":eek:" class="wp-smiley" /> mauris. Cras mauris viverra elit. Nam laoreet viverra. Pellentesque tortor. Nam libero ante, porta urna ut turpis. Nullam wisi magna, <img src="' . $includes_path . 'icon_mrgreen.gif" alt=":mrgreen:" class="wp-smiley" /> tincidunt nec, sagittis non, fringilla enim. Nam consectetuer nec, ullamcorper pede eu dui odio consequat vel, vehicula tortor quis pede turpis cursus quis, egestas ipsum ultricies ut, eleifend velit. Mauris vestibulum iaculis. Sed in nunc. Vivamus elit porttitor egestas. Mauris purus <img src="' . $includes_path . 'icon_question.gif" alt=":?:" class="wp-smiley" />'
+				"Lorem ipsum dolor sit amet mauris \xf0\x9f\x98\x89 Praesent gravida sodales. \xf0\x9f\x98\x86 Vivamus nec diam in faucibus eu, bibendum varius nec, imperdiet purus est, at augue at lacus malesuada elit dapibus a, \xf0\x9f\x98\xae mauris. Cras mauris viverra elit. Nam laoreet viverra. Pellentesque tortor. Nam libero ante, porta urna ut turpis. Nullam wisi magna, <img src=\"${includes_path}mrgreen.png\" alt=\":mrgreen:\" class=\"wp-smiley\" style=\"height: 1em; max-height: 1em;\" /> tincidunt nec, sagittis non, fringilla enim. Nam consectetuer nec, ullamcorper pede eu dui odio consequat vel, vehicula tortor quis pede turpis cursus quis, egestas ipsum ultricies ut, eleifend velit. Mauris vestibulum iaculis. Sed in nunc. Vivamus elit porttitor egestas. Mauris purus \xe2\x9d\x93"
 			),
 			array (
 				'<strong>Welcome to the jungle!</strong> We got fun n games! :) We got everything you want 8-) <em>Honey we know the names :)</em>',
-				'<strong>Welcome to the jungle!</strong> We got fun n games! <img src="' . $includes_path . 'icon_smile.gif" alt=":)" class="wp-smiley" /> We got everything you want <img src="' . $includes_path . 'icon_cool.gif" alt="8-)" class="wp-smiley" /> <em>Honey we know the names <img src="' . $includes_path . 'icon_smile.gif" alt=":)" class="wp-smiley" /></em>'
+				"<strong>Welcome to the jungle!</strong> We got fun n games! \xf0\x9f\x99\x82 We got everything you want \xf0\x9f\x98\x8e <em>Honey we know the names \xf0\x9f\x99\x82</em>"
 			),
 			array (
 				"<strong;)>a little bit of this\na little bit:other: of that :D\n:D a little bit of good\nyeah with a little bit of bad8O",
-				"<strong;)>a little bit of this\na little bit:other: of that <img src=\"{$includes_path}icon_biggrin.gif\" alt=\":D\" class=\"wp-smiley\" />\n<img src=\"{$includes_path}icon_biggrin.gif\" alt=\":D\" class=\"wp-smiley\" /> a little bit of good\nyeah with a little bit of bad8O"
+				"<strong;)>a little bit of this\na little bit:other: of that \xf0\x9f\x98\x80\n\xf0\x9f\x98\x80 a little bit of good\nyeah with a little bit of bad8O"
 			),
 			array (
 				'<strong style="here comes the sun :-D">and I say it\'s allright:D:D',
@@ -72,15 +72,15 @@ class Tests_Formatting_Smilies extends WP_UnitTestCase {
 		return array (
 			array (
 				'Peter Brian Gabriel (born 13 February 1950) is a British singer, musician, and songwriter who rose to fame as the lead vocalist and flautist of the progressive rock group Genesis. :monkey:',
-				'Peter Brian Gabriel (born 13 February 1950) is a British singer, musician, and songwriter who rose to fame as the lead vocalist and flautist of the progressive rock group Genesis. <img src="' . $includes_path . 'icon_shock_the_monkey.gif" alt=":monkey:" class="wp-smiley" />'
+				'Peter Brian Gabriel (born 13 February 1950) is a British singer, musician, and songwriter who rose to fame as the lead vocalist and flautist of the progressive rock group Genesis. <img src="' . $includes_path . 'icon_shock_the_monkey.gif" alt=":monkey:" class="wp-smiley" style="height: 1em; max-height: 1em;" />'
 			),
 			array (
 				'Star Wars Jedi Knight :arrow: Jedi Academy is a first and third-person shooter action game set in the Star Wars universe. It was developed by Raven Software and published, distributed and marketed by LucasArts in North America and by Activision in the rest of the world. :nervou:',
-				'Star Wars Jedi Knight <img src="' . $includes_path . 'icon_arrow.gif" alt=":arrow:" class="wp-smiley" /> Jedi Academy is a first and third-person shooter action game set in the Star Wars universe. It was developed by Raven Software and published, distributed and marketed by LucasArts in North America and by Activision in the rest of the world. <img src="' . $includes_path . 'icon_nervou.gif" alt=":nervou:" class="wp-smiley" />'
+				'Star Wars Jedi Knight <img src="' . $includes_path . 'icon_arrow.gif" alt=":arrow:" class="wp-smiley" style="height: 1em; max-height: 1em;" /> Jedi Academy is a first and third-person shooter action game set in the Star Wars universe. It was developed by Raven Software and published, distributed and marketed by LucasArts in North America and by Activision in the rest of the world. <img src="' . $includes_path . 'icon_nervou.gif" alt=":nervou:" class="wp-smiley" style="height: 1em; max-height: 1em;" />'
 			),
 			array (
 				':arrow: monkey: Lorem ipsum dolor sit amet enim. Etiam ullam :PP <br />corper. Suspendisse a pellentesque dui, non felis.<a> :arrow: :arrow</a>',
-				'<img src="' . $includes_path . 'icon_arrow.gif" alt=":arrow:" class="wp-smiley" /> monkey: Lorem ipsum dolor sit amet enim. Etiam ullam <img src="' . $includes_path . 'icon_tongue.gif" alt=":PP" class="wp-smiley" /> <br />corper. Suspendisse a pellentesque dui, non felis.<a> <img src="' . $includes_path . 'icon_arrow.gif" alt=":arrow:" class="wp-smiley" /> :arrow</a>'
+				'<img src="' . $includes_path . 'icon_arrow.gif" alt=":arrow:" class="wp-smiley" style="height: 1em; max-height: 1em;" /> monkey: Lorem ipsum dolor sit amet enim. Etiam ullam <img src="' . $includes_path . 'icon_tongue.gif" alt=":PP" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <br />corper. Suspendisse a pellentesque dui, non felis.<a> <img src="' . $includes_path . 'icon_arrow.gif" alt=":arrow:" class="wp-smiley" style="height: 1em; max-height: 1em;" /> :arrow</a>'
 			),
 		);
 	}
@@ -147,7 +147,7 @@ class Tests_Formatting_Smilies extends WP_UnitTestCase {
 		$includes_path = includes_url("images/smilies/");
 
 		$in_str = 'Do we ingore smilies ;-) in ' . $element . ' tags <' . $element . '>My Content Here :?: </' . $element . '>';
-		$exp_str = 'Do we ingore smilies <img src="' . $includes_path . 'icon_wink.gif" alt=";-)" class="wp-smiley" /> in ' . $element . ' tags <' . $element . '>My Content Here :?: </' . $element . '>';
+		$exp_str = "Do we ingore smilies \xf0\x9f\x98\x89 in $element tags <$element>My Content Here :?: </$element>";
 
 		// standard smilies, use_smilies: ON
 		update_option( 'use_smilies', 1 );
@@ -169,27 +169,27 @@ class Tests_Formatting_Smilies extends WP_UnitTestCase {
 		return array (
 			array (
 				'8-O :-(',
-				'<img src="' . $includes_path . 'icon_eek.gif" alt="8-O" class="wp-smiley" /> <img src="' . $includes_path . 'icon_sad.gif" alt=":-(" class="wp-smiley" />'
+				"\xf0\x9f\x98\xaf \xf0\x9f\x99\x81"
 			),
 			array (
 				'8-) 8-O',
-				'<img src="' . $includes_path . 'icon_cool.gif" alt="8-)" class="wp-smiley" /> <img src="' . $includes_path . 'icon_eek.gif" alt="8-O" class="wp-smiley" />'
+				"\xf0\x9f\x98\x8e \xf0\x9f\x98\xaf"
 			),
 			array (
 				'8-) 8O',
-				'<img src="' . $includes_path . 'icon_cool.gif" alt="8-)" class="wp-smiley" /> <img src="' . $includes_path . 'icon_eek.gif" alt="8O" class="wp-smiley" />'
+				"\xf0\x9f\x98\x8e \xf0\x9f\x98\xaf"
 			),
 			array (
 				'8-) :-(',
-				'<img src="' . $includes_path . 'icon_cool.gif" alt="8-)" class="wp-smiley" /> <img src="' . $includes_path . 'icon_sad.gif" alt=":-(" class="wp-smiley" />'
+				"\xf0\x9f\x98\x8e \xf0\x9f\x99\x81"
 			),
 			array (
 				'8-) :twisted:',
-				'<img src="' . $includes_path . 'icon_cool.gif" alt="8-)" class="wp-smiley" /> <img src="' . $includes_path . 'icon_twisted.gif" alt=":twisted:" class="wp-smiley" />'
+				"\xf0\x9f\x98\x8e \xf0\x9f\x98\x88"
 			),
 			array (
-				'8O :twisted: :( :? :(',
-				'<img src="' . $includes_path . 'icon_eek.gif" alt="8O" class="wp-smiley" /> <img src="' . $includes_path . 'icon_twisted.gif" alt=":twisted:" class="wp-smiley" /> <img src="' . $includes_path . 'icon_sad.gif" alt=":(" class="wp-smiley" /> <img src="' . $includes_path . 'icon_confused.gif" alt=":?" class="wp-smiley" /> <img src="' . $includes_path . 'icon_sad.gif" alt=":(" class="wp-smiley" />'
+				'8O :twisted: :( :? :roll: :mrgreen:',
+				"\xf0\x9f\x98\xaf \xf0\x9f\x98\x88 \xf0\x9f\x99\x81 \xf0\x9f\x98\x95 \xf0\x9f\x99\x84 <img src=\"{$includes_path}mrgreen.png\" alt=\":mrgreen:\" class=\"wp-smiley\" style=\"height: 1em; max-height: 1em;\" />"
 			),
 		);
 	}
@@ -228,11 +228,11 @@ class Tests_Formatting_Smilies extends WP_UnitTestCase {
 			),
 			array (
 				'8O :) additional text here :)',
-				'8O <img src="' . $includes_path . 'icon_smile.gif" alt=":)" class="wp-smiley" /> additional text here <img src="' . $includes_path . 'icon_smile.gif" alt=":)" class="wp-smiley" />'
+				'8O <img src="' . $includes_path . 'simple-smile.png" alt=":)" class="wp-smiley" style="height: 1em; max-height: 1em;" /> additional text here <img src="' . $includes_path . 'simple-smile.png" alt=":)" class="wp-smiley" style="height: 1em; max-height: 1em;" />'
 			),
 			array (
 				':) :) :) :)',
-				'<img src="' . $includes_path . 'icon_smile.gif" alt=":)" class="wp-smiley" /> <img src="' . $includes_path . 'icon_smile.gif" alt=":)" class="wp-smiley" /> <img src="' . $includes_path . 'icon_smile.gif" alt=":)" class="wp-smiley" /> <img src="' . $includes_path . 'icon_smile.gif" alt=":)" class="wp-smiley" />'
+				'<img src="' . $includes_path . 'simple-smile.png" alt=":)" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <img src="' . $includes_path . 'simple-smile.png" alt=":)" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <img src="' . $includes_path . 'simple-smile.png" alt=":)" class="wp-smiley" style="height: 1em; max-height: 1em;" /> <img src="' . $includes_path . 'simple-smile.png" alt=":)" class="wp-smiley" style="height: 1em; max-height: 1em;" />'
 			),
 		);
 	}
@@ -257,7 +257,7 @@ class Tests_Formatting_Smilies extends WP_UnitTestCase {
 		$orig_trans = $wpsmiliestrans; // save original tranlations array
 
 		$wpsmiliestrans = array (
-		  ':)' => 'icon_smile.gif'
+		  ':)' => 'simple-smile.png'
 		);
 
 		smilies_init();
@@ -272,6 +272,25 @@ class Tests_Formatting_Smilies extends WP_UnitTestCase {
 		$wpsmiliestrans = $orig_trans; // reset original translations array
 	}
 
+	public function get_spaces_around_smilies() {
+		$nbsp = "\xC2\xA0";
+
+		return array(
+			array(
+				'test :) smile',
+				"test \xf0\x9f\x99\x82 smile"
+			),
+			array(
+				'test &nbsp;:)&nbsp;smile',
+				"test &nbsp;\xf0\x9f\x99\x82&nbsp;smile"
+			),
+			array(
+				"test {$nbsp}:){$nbsp}smile",
+				"test {$nbsp}\xf0\x9f\x99\x82{$nbsp}smile"
+			)
+		);
+	}
+
 	/**
 	 * Check that $wp_smiliessearch pattern will match smilies
 	 * between spaces, but never capture those spaces.
@@ -280,44 +299,15 @@ class Tests_Formatting_Smilies extends WP_UnitTestCase {
 	 * or added when replacing the text with an image.
 	 *
 	 * @ticket 22692
+	 * @dataProvider get_spaces_around_smilies
 	 */
-	function test_spaces_around_smilies() {
-		$nbsp = "\xC2\xA0";
-
+	function test_spaces_around_smilies( $in_txt, $converted_txt ) {
 		// standard smilies, use_smilies: ON
 		update_option( 'use_smilies', 1 );
+
 		smilies_init();
 
-		$input  = array();
-		$output = array();
-
-		$input[]  = 'My test :) smile';
-		$output[] = array('test <img ', 'alt=":)"', ' /> smile');
-
-		$input[]  = 'My test ;) smile';
-		$output[] = array('test <img ', 'alt=";)"', ' /> smile');
-
-		$input[]  = 'My test &nbsp;:)&nbsp;smile';
-		$output[] = array('test &nbsp;<img ', 'alt=":)"', ' />&nbsp;smile');
-
-		$input[]  = 'My test &nbsp;;)&nbsp;smile';
-		$output[] = array('test &nbsp;<img ', 'alt=";)"', ' />&nbsp;smile');
-
-		$input[]  = "My test {$nbsp}:){$nbsp}smile";
-		$output[] = array("test {$nbsp}<img ", 'alt=":)"', " />{$nbsp}smile");
-
-		$input[]  = "My test {$nbsp};){$nbsp}smile";
-		$output[] = array("test {$nbsp}<img ", 'alt=";)"', " />{$nbsp}smile");
-
-		foreach($input as $key => $in) {
-			$result = convert_smilies( $in );
-			foreach($output[$key] as $out) {
-
-				// Each output element must appear in the results.
-				$this->assertContains( $out, $result );
-
-			}
-		}
+		$this->assertEquals( $converted_txt, convert_smilies( $in_txt ) );
 
 		// standard smilies, use_smilies: OFF
 		update_option( 'use_smilies', 0 );

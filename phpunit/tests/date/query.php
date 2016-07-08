@@ -508,6 +508,17 @@ class Tests_WP_Date_Query extends WP_UnitTestCase {
 		$this->assertFalse( $q->build_time_query( 'post_date', '=' ) );
 	}
 
+	/**
+	 * @ticket 34228
+	 */
+	public function test_build_time_query_should_not_discard_hour_0() {
+		$q = new WP_Date_Query( array() );
+
+		$found = $q->build_time_query( 'post_date', '=', 0, 10 );
+
+		$this->assertContains( '%H', $found );
+	}
+
 	public function test_build_time_query_compare_in() {
 		$q = new WP_Date_Query( array() );
 
@@ -857,13 +868,13 @@ class Tests_WP_Date_Query extends WP_UnitTestCase {
 	 */
 	public function test_validate_date_values_hour() {
 		// Valid values.
-		$hours = range( 1, 23 );
+		$hours = range( 0, 23 );
 		foreach ( $hours as $hour ) {
 			$this->assertTrue( $this->q->validate_date_values( array( 'hour' => $hour ) ) );
 		}
 
 		// Invalid values.
-		$hours = array( -1, 24, 25, 'string who wants to be a int' );
+		$hours = array( -1, 24, 25, 'string' );
 		foreach ( $hours as $hour ) {
 			$this->assertFalse( $this->q->validate_date_values( array( 'hour' => $hour ) ) );
 		}
@@ -958,6 +969,68 @@ class Tests_WP_Date_Query extends WP_UnitTestCase {
 		foreach ( $days_of_year as $day_of_year ) {
 			$this->assertFalse( @$this->q->validate_date_values( array( 'dayofyear' => $day_of_year ) ) );
 		}
+	}
+
+	/**
+	 * @ticket 31001
+	 */
+	public function test_validate_date_values_should_process_array_value_for_year() {
+		$p1 = self::factory()->post->create( array( 'post_date' => '2015-01-12 00:00:00' ) );
+		$p2 = self::factory()->post->create( array( 'post_date' => '2013-01-12 00:00:00' ) );
+
+		$q = new WP_Query( array(
+			'date_query' => array(
+				array(
+					'compare' => 'BETWEEN',
+					'year' => array( 2012, 2014 ),
+				),
+			),
+			'fields' => 'ids',
+		) );
+
+		$this->assertEquals( array( $p2 ), $q->posts );
+	}
+
+	/**
+	 * @ticket 31001
+	 */
+	public function test_validate_date_values_should_process_array_value_for_day() {
+		$p1 = self::factory()->post->create( array( 'post_date' => '2015-01-12 00:00:00' ) );
+		$p2 = self::factory()->post->create( array( 'post_date' => '2015-01-10 00:00:00' ) );
+
+		$q = new WP_Query( array(
+			'date_query' => array(
+				array(
+					'compare' => 'BETWEEN',
+					'day' => array( 9, 11 ),
+				),
+			),
+			'fields' => 'ids',
+		) );
+
+		$this->assertEquals( array( $p2 ), $q->posts );
+	}
+
+	/**
+	 * @ticket 31001
+	 * @expectedIncorrectUsage WP_Date_Query
+	 */
+	public function test_validate_date_values_should_process_array_value_for_day_when_values_are_invalid() {
+		$p1 = self::factory()->post->create( array( 'post_date' => '2015-01-12 00:00:00' ) );
+		$p2 = self::factory()->post->create( array( 'post_date' => '2015-01-10 00:00:00' ) );
+
+		$q = new WP_Query( array(
+			'date_query' => array(
+				array(
+					'compare' => 'BETWEEN',
+					'day' => array( 9, 32 ),
+				),
+			),
+			'fields' => 'ids',
+		) );
+
+		// MySQL ignores the invalid clause.
+		$this->assertEquals( array( $p1, $p2 ), $q->posts );
 	}
 
 	/** Helpers **********************************************************/

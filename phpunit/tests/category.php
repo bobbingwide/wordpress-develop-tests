@@ -10,9 +10,8 @@
 class Tests_Category extends WP_UnitTestCase {
 
 	function tearDown() {
-		parent::tearDown();
-
 		_unregister_taxonomy( 'test_tax_cat' );
+		parent::tearDown();
 	}
 
 	/**
@@ -22,17 +21,15 @@ class Tests_Category extends WP_UnitTestCase {
 	 */
 	function test_get_all_category_ids() {
 		// create categories
-		$this->factory->category->create_many(15);
+		self::factory()->category->create_many( 2 );
 
 		// create new taxonomy to ensure not included
 		register_taxonomy( 'test_tax_cat', 'post' );
 		wp_insert_term( "test1", 'test_tax_cat' );
-		wp_insert_term( "test2", 'test_tax_cat' );
-		wp_insert_term( "test3", 'test_tax_cat' );
 
 		// Validate length is 1 + created due to uncategorized
 		$cat_ids = get_all_category_ids();
-		$this->assertEquals( 16, count($cat_ids));
+		$this->assertEquals( 3, count($cat_ids));
 	}
 
 	/**
@@ -41,13 +38,13 @@ class Tests_Category extends WP_UnitTestCase {
 	function test_get_category_by_slug() {
 
 		// create Test Categories
-		$testcat = $this->factory->category->create_and_get(
+		$testcat = self::factory()->category->create_and_get(
 			array(
 				'slug' => 'testcat',
 				'name' => 'Test Category 1'
 			)
 		);
-		$testcat2 = $this->factory->category->create_and_get(
+		$testcat2 = self::factory()->category->create_and_get(
 			array(
 				'slug' => 'testcat2',
 				'name' => 'Test Category 2'
@@ -76,7 +73,7 @@ class Tests_Category extends WP_UnitTestCase {
 			'name' => 'Test MCC',
 			'description' => 'Category Test'
 		);
-		$testcat = $this->factory->category->create_and_get( $testcat_array );
+		$testcat = self::factory()->category->create_and_get( $testcat_array );
 		$testcat_array['term_id'] = $testcat->term_id;
 
 		$testcat2_array = array(
@@ -85,7 +82,7 @@ class Tests_Category extends WP_UnitTestCase {
 			'description' => 'Category Test',
 			'parent' => $testcat->term_id
 		);
-		$testcat2 = $this->factory->category->create_and_get( $testcat2_array );
+		$testcat2 = self::factory()->category->create_and_get( $testcat2_array );
 		$testcat2_array['term_id'] = $testcat2->term_id;
 
 		// unset properties to enable validation of object
@@ -148,7 +145,7 @@ class Tests_Category extends WP_UnitTestCase {
 	function test_get_cat_name() {
 
 		// create Test Category
-		$testcat = $this->factory->category->create_and_get(
+		$testcat = self::factory()->category->create_and_get(
 			array(
 				'slug' => 'testcat',
 				'name' => 'Test Category 1'
@@ -168,7 +165,7 @@ class Tests_Category extends WP_UnitTestCase {
 	function test_get_cat_ID() {
 
 		// create Test Category
-		$testcat = $this->factory->category->create_and_get(
+		$testcat = self::factory()->category->create_and_get(
 			array(
 				'slug' => 'testcat',
 				'name' => 'Test Category 1'
@@ -188,42 +185,42 @@ class Tests_Category extends WP_UnitTestCase {
 	function test_get_category_by_path() {
 
 		// create Test Categories
-		$root_id = $this->factory->category->create(
+		$root_id = self::factory()->category->create(
 			array(
 				'slug' => 'root',
 			)
 		);
-		$root_cat_id = $this->factory->category->create(
+		$root_cat_id = self::factory()->category->create(
 			array(
 				'slug' => 'cat',
 				'parent' => $root_id
 			)
 		);
-		$root_cat_cat_id = $this->factory->category->create(
+		$root_cat_cat_id = self::factory()->category->create(
 			array(
 				'slug' => 'cat', //note this is modified on create
 				'parent' => $root_cat_id
 			)
 		);
-		$root_path_id = $this->factory->category->create(
+		$root_path_id = self::factory()->category->create(
 			array(
 				'slug' => 'path',
 				'parent' => $root_id
 			)
 		);
-		$root_path_cat_id = $this->factory->category->create(
+		$root_path_cat_id = self::factory()->category->create(
 			array(
 				'slug' => 'cat', //note this is modified on create
 				'parent' => $root_path_id
 			)
 		);
-		$root_level_id = $this->factory->category->create(
+		$root_level_id = self::factory()->category->create(
 			array(
 				'slug' => 'level-1',
 				'parent' => $root_id
 			)
 		);
-		$root_level_cat_id = $this->factory->category->create(
+		$root_level_cat_id = self::factory()->category->create(
 			array(
 				'slug' => 'cat', //note this is modified on create
 				'parent' => $root_level_id
@@ -245,5 +242,4 @@ class Tests_Category extends WP_UnitTestCase {
 		$this->assertEquals( $root_level_id, $ret_cat->term_id );
 		$this->assertNull( get_category_by_path( 'nocat/nocat/', false) );
 	}
-
 }

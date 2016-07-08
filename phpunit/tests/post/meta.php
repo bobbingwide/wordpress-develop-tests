@@ -8,7 +8,7 @@ class Tests_Post_Meta extends WP_UnitTestCase {
 	function setUp() {
 		parent::setUp();
 
-		$this->author = new WP_User( $this->factory->user->create( array( 'role' => 'editor' ) ) );
+		$this->author = new WP_User( self::factory()->user->create( array( 'role' => 'editor' ) ) );
 
 		$post = array(
 			'post_author' => $this->author->ID,
@@ -30,12 +30,6 @@ class Tests_Post_Meta extends WP_UnitTestCase {
 
 		// insert a post
 		$this->post_id_2 = wp_insert_post($post);
-	}
-
-	function tearDown() {
-		parent::tearDown();
-		wp_delete_post($this->post_id);
-		wp_delete_post($this->post_id_2);
 	}
 
 	function test_unique_postmeta() {

@@ -60,12 +60,7 @@ class Tests_DB extends WP_UnitTestCase {
 		$var = $wpdb->get_var( "SELECT ID FROM $wpdb->users LIMIT 1" );
 		$this->assertGreaterThan( 0, $var );
 
-		if ( $wpdb->use_mysqli ) {
-			mysqli_close( $wpdb->dbh );
-		} else {
-			mysql_close( $wpdb->dbh );
-		}
-		unset( $wpdb->dbh );
+		$wpdb->close();
 
 		$var = $wpdb->get_var( "SELECT ID FROM $wpdb->users LIMIT 1" );
 		$this->assertGreaterThan( 0, $var );
@@ -281,13 +276,12 @@ class Tests_DB extends WP_UnitTestCase {
 
 		$current_modes = $wpdb->get_var( 'SELECT @@SESSION.sql_mode;' );
 
-		$new_modes = $expected_modes = array( 'IGNORE_SPACE', 'NO_AUTO_CREATE_USER' );
-		$expected_modes[] = 'STRICT_ALL_TABLES';
+		$new_modes = array( 'IGNORE_SPACE', 'NO_AUTO_CREATE_USER' );
 
 		$wpdb->set_sql_mode( $new_modes );
 
 		$check_new_modes = $wpdb->get_var( 'SELECT @@SESSION.sql_mode;' );
-		$this->assertEqualSets( $expected_modes, explode( ',', $check_new_modes ) );
+		$this->assertEqualSets( $new_modes, explode( ',', $check_new_modes ) );
 
 		$wpdb->set_sql_mode( explode( ',', $current_modes ) );
 	}
@@ -318,20 +312,20 @@ class Tests_DB extends WP_UnitTestCase {
 
 		$current_modes = $wpdb->get_var( 'SELECT @@SESSION.sql_mode;' );
 
-		$new_modes = array( 'IGNORE_SPACE', 'NO_ZERO_DATE', 'NO_AUTO_CREATE_USER' );
+		$new_modes = array( 'IGNORE_SPACE', 'ONLY_FULL_GROUP_BY', 'NO_AUTO_CREATE_USER' );
 
 		add_filter( 'incompatible_sql_modes', array( $this, 'filter_allowed_incompatible_sql_mode' ), 1, 1 );
 		$wpdb->set_sql_mode( $new_modes );
 		remove_filter( 'incompatible_sql_modes', array( $this, 'filter_allowed_incompatible_sql_mode' ), 1 );
 
 		$check_new_modes = $wpdb->get_var( 'SELECT @@SESSION.sql_mode;' );
-		$this->assertContains( 'NO_ZERO_DATE', explode( ',', $check_new_modes ) );
+		$this->assertContains( 'ONLY_FULL_GROUP_BY', explode( ',', $check_new_modes ) );
 
 		$wpdb->set_sql_mode( explode( ',', $current_modes ) );
 	}
 
 	public function filter_allowed_incompatible_sql_mode( $modes ) {
-		$pos = array_search( 'NO_ZERO_DATE', $modes );
+		$pos = array_search( 'ONLY_FULL_GROUP_BY', $modes );
 		$this->assertGreaterThanOrEqual( 0, $pos );
 
 		if ( FALSE === $pos ) {
@@ -340,146 +334,6 @@ class Tests_DB extends WP_UnitTestCase {
 
 		unset( $modes[ $pos ] );
 		return $modes;
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_set_sql_mode_strict() {
-		global $wpdb;
-		$wpdb->set_sql_mode();
-		$sql_modes = $wpdb->get_var( 'SELECT @@SESSION.sql_mode;' );
-		$this->assertContains( 'STRICT_ALL_TABLES', explode( ',', $sql_modes ) );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_numeric_strings() {
-		global $wpdb;
-		$post_id = $this->factory->post->create();
-		$wpdb->update( $wpdb->posts, array( 'post_parent' => 4 ), array( 'ID' => $post_id ), array( '%s' ) );
-		$this->assertContains( "`post_parent` = '4'", $wpdb->last_query );
-		$this->assertEmpty( $wpdb->last_error );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_numeric_strings_using_query() {
-		global $wpdb;
-		$post_id = $this->factory->post->create();
-		$wpdb->query( $wpdb->prepare( "UPDATE $wpdb->posts SET post_parent = %s WHERE ID = %s", '4', $post_id ) );
-		$this->assertEmpty( $wpdb->last_error );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_nan() {
-		global $wpdb;
-		$post_id = $this->factory->post->create();
-		$suppress = $wpdb->suppress_errors( true );
-		$wpdb->update( $wpdb->posts, array( 'post_parent' => 'foo' ), array( 'ID' => $post_id ), array( '%s' ) );
-		$this->assertContains( "`post_parent` = 'foo'", $wpdb->last_query );
-		$this->assertContains( 'Incorrect integer value', $wpdb->last_error );
-		$wpdb->suppress_errors( $suppress );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_nan_using_query() {
-		global $wpdb;
-		$post_id = $this->factory->post->create();
-		$suppress = $wpdb->suppress_errors( true );
-		$wpdb->query( $wpdb->prepare( "UPDATE $wpdb->posts SET post_parent = %s WHERE ID = %s", 'foo', $post_id ) );
-		$this->assertContains( 'Incorrect integer value', $wpdb->last_error );
-		$wpdb->suppress_errors( $suppress );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_number_start_of_string() {
-		global $wpdb;
-		$post_id = $this->factory->post->create();
-		$suppress = $wpdb->suppress_errors( true );
-		$wpdb->query( $wpdb->prepare( "UPDATE $wpdb->posts SET post_parent = %s WHERE ID = %s", '4foo', $post_id ) );
-		$this->assertContains( "Data truncated for column 'post_parent'", $wpdb->last_error );
-		$wpdb->suppress_errors( $suppress );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_booleans_true() {
-		global $wpdb;
-		$user_id = $this->factory->user->create();
-		$wpdb->query( "UPDATE $wpdb->users SET user_status = true WHERE ID = $user_id" );
-		$this->assertEmpty( $wpdb->last_error );
-		$user = get_userdata( $user_id );
-		$this->assertSame( '1', $user->user_status );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_booleans_false() {
-		global $wpdb;
-		$user_id = $this->factory->user->create();
-		$wpdb->query( "UPDATE $wpdb->users SET user_status = false WHERE ID = $user_id" );
-		$this->assertEmpty( $wpdb->last_error );
-		$user = get_userdata( $user_id );
-		$this->assertEquals( '0', $user->user_status );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_zero_date_is_valid() {
-		global $wpdb;
-		$user_id = $this->factory->user->create();
-		$wpdb->query( "UPDATE $wpdb->users SET user_registered = '0000-00-00' WHERE ID = $user_id" );
-		$this->assertEmpty( $wpdb->last_error );
-		$user = get_userdata( $user_id );
-		$this->assertEquals( '0000-00-00 00:00:00', $user->user_registered );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_zero_datetime_is_valid() {
-		global $wpdb;
-		$user_id = $this->factory->user->create();
-		$wpdb->query( "UPDATE $wpdb->users SET user_registered = '0000-00-00 00:00:00' WHERE ID = $user_id" );
-		$this->assertEmpty( $wpdb->last_error );
-		$user = get_userdata( $user_id );
-		$this->assertEquals( '0000-00-00 00:00:00', $user->user_registered );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_invalid_dates_are_invalid() {
-		global $wpdb;
-		$user_id = $this->factory->user->create();
-		$suppress = $wpdb->suppress_errors( true );
-		$wpdb->query( "UPDATE $wpdb->users SET user_registered = '2014-02-29 00:00:00' WHERE ID = $user_id" );
-		$this->assertContains( 'Incorrect datetime value', $wpdb->last_error );
-		$wpdb->suppress_errors( $suppress );
-	}
-
-	/**
-	 * @ticket 21212
-	 */
-	function test_strict_mode_nulls_are_invalid() {
-		global $wpdb;
-		$user_id = $this->factory->user->create();
-		$suppress = $wpdb->suppress_errors( true );
-		$wpdb->query( "UPDATE $wpdb->users SET user_nicename = NULL WHERE ID = $user_id" );
-		$this->assertContains( 'cannot be null', $wpdb->last_error );
-		$wpdb->suppress_errors( $suppress );
 	}
 
 	/**
@@ -650,7 +504,7 @@ class Tests_DB extends WP_UnitTestCase {
 			$this->markTestSkipped( 'procedure could not be created (missing privileges?)' );
 		}
 
-		$post_id = $this->factory->post->create();
+		$post_id = self::factory()->post->create();
 
 		$this->assertNotEmpty( $wpdb->get_results( 'CALL `test_mysqli_flush_sync_procedure`' ) );
 		$this->assertNotEmpty( $wpdb->get_results( "SELECT ID FROM `{$wpdb->posts}` LIMIT 1" ) );
@@ -667,11 +521,18 @@ class Tests_DB extends WP_UnitTestCase {
 	 */
 	function data_get_table_from_query() {
 		$table = 'a_test_table_name';
+		$more_tables = array(
+			// table_name => expected_value
+			'`a_test_db`.`another_test_table`' => 'a_test_db.another_test_table',
+			'a-test-with-dashes'               => 'a-test-with-dashes',
+		);
 
 		$queries = array(
 			// Basic
 			"SELECT * FROM $table",
 			"SELECT * FROM `$table`",
+
+			"SELECT * FROM (SELECT * FROM $table) as subquery",
 
 			"INSERT $table",
 			"INSERT IGNORE $table",
@@ -767,10 +628,19 @@ class Tests_DB extends WP_UnitTestCase {
 			"SHOW FULL COLUMNS FROM $table",
 			"SHOW CREATE TABLE $table",
 			"SHOW INDEX FROM $table",
+
+			// @ticket 32763
+			"SELECT " . str_repeat( 'a', 10000 ) . " FROM (SELECT * FROM $table) as subquery",
 		);
 
-		foreach ( $queries as &$query ) {
-			$query = array( $query, $table );
+		$querycount = count( $queries );
+		for ( $ii = 0; $ii < $querycount; $ii++ ) {
+			foreach ( $more_tables as $name => $expected_name ) {
+				$new_query = str_replace( $table, $name, $queries[ $ii ] );
+				$queries[] = array( $new_query, $expected_name );
+			}
+
+			$queries[ $ii ] = array( $queries[ $ii ], $table );
 		}
 		return $queries;
 	}
@@ -870,13 +740,24 @@ class Tests_DB extends WP_UnitTestCase {
 	 */
 	function test_process_fields() {
 		global $wpdb;
+
+		if ( $wpdb->charset ) {
+			$expected_charset = $wpdb->charset;
+		} else {
+			$expected_charset = $wpdb->get_col_charset( $wpdb->posts, 'post_content' );
+		}
+
+		if ( ! in_array( $expected_charset, array( 'utf8', 'utf8mb4', 'latin1' ) ) ) {
+			$this->markTestSkipped( "This test only works with utf8, utf8mb4 or latin1 character sets" );
+		}
+
 		$data = array( 'post_content' => '¡foo foo foo!' );
 		$expected = array(
 			'post_content' => array(
 				'value' => '¡foo foo foo!',
 				'format' => '%s',
-				'charset' => $wpdb->charset,
-				'ascii' => false,
+				'charset' => $expected_charset,
+				'length' => $wpdb->get_col_length( $wpdb->posts, 'post_content' ),
 			)
 		);
 
@@ -921,22 +802,231 @@ class Tests_DB extends WP_UnitTestCase {
 	function filter_pre_get_col_charset( $charset, $table, $column ) {
 		return 'fake_col_charset';
 	}
-}
 
-/**
- * Special class for exposing protected wpdb methods we need to access
- */
-class wpdb_exposed_methods_for_testing extends wpdb {
-	public function __construct() {
+	/**
+	 * @ticket 15158
+	 */
+	function test_null_insert() {
 		global $wpdb;
-		$this->dbh = $wpdb->dbh;
-		$this->use_mysqli = $wpdb->use_mysqli;
-		$this->ready = true;
-		$this->field_types = $wpdb->field_types;
-		$this->charset = $wpdb->charset;
+
+		$key = 'null_insert_key';
+
+		$wpdb->insert(
+			$wpdb->postmeta,
+			array(
+				'meta_key' => $key,
+				'meta_value' => NULL
+			),
+			array( '%s', '%s' )
+		);
+
+		$row = $wpdb->get_row( "SELECT * FROM $wpdb->postmeta WHERE meta_key='$key'" );
+
+		$this->assertNull( $row->meta_value );
 	}
 
-	public function __call( $name, $arguments ) {
-		return call_user_func_array( array( $this, $name ), $arguments );
+	/**
+	 * @ticket 15158
+	 */
+	function test_null_update_value() {
+		global $wpdb;
+
+		$key = 'null_update_value_key';
+		$value = 'null_update_value_key';
+
+		$wpdb->insert(
+			$wpdb->postmeta,
+			array(
+				'meta_key' => $key,
+				'meta_value' => $value
+			),
+			array( '%s', '%s' )
+		);
+
+		$row = $wpdb->get_row( "SELECT * FROM $wpdb->postmeta WHERE meta_key='$key'" );
+
+		$this->assertSame( $value, $row->meta_value );
+
+		$wpdb->update(
+			$wpdb->postmeta,
+			array( 'meta_value' => NULL ),
+			array(
+				'meta_key' => $key,
+				'meta_value' => $value
+			),
+			array( '%s' ),
+			array( '%s', '%s' )
+		);
+
+		$row = $wpdb->get_row( "SELECT * FROM $wpdb->postmeta WHERE meta_key='$key'" );
+
+		$this->assertNull( $row->meta_value );
+	}
+
+	/**
+	 * @ticket 15158
+	 */
+	function test_null_update_where() {
+		global $wpdb;
+
+		$key = 'null_update_where_key';
+		$value = 'null_update_where_key';
+
+		$wpdb->insert(
+			$wpdb->postmeta,
+			array(
+				'meta_key' => $key,
+				'meta_value' => NULL
+			),
+			array( '%s', '%s' )
+		);
+
+		$row = $wpdb->get_row( "SELECT * FROM $wpdb->postmeta WHERE meta_key='$key'" );
+
+		$this->assertNull( $row->meta_value );
+
+		$wpdb->update(
+			$wpdb->postmeta,
+			array( 'meta_value' => $value ),
+			array(
+				'meta_key' => $key,
+				'meta_value' => NULL
+			),
+			array( '%s' ),
+			array( '%s', '%s' )
+		);
+
+		$row = $wpdb->get_row( "SELECT * FROM $wpdb->postmeta WHERE meta_key='$key'" );
+
+		$this->assertSame( $value, $row->meta_value );
+	}
+
+	/**
+	 * @ticket 15158
+	 */
+	function test_null_delete() {
+		global $wpdb;
+
+		$key = 'null_update_where_key';
+		$value = 'null_update_where_key';
+
+		$wpdb->insert(
+			$wpdb->postmeta,
+			array(
+				'meta_key' => $key,
+				'meta_value' => NULL
+			),
+			array( '%s', '%s' )
+		);
+
+		$row = $wpdb->get_row( "SELECT * FROM $wpdb->postmeta WHERE meta_key='$key'" );
+
+		$this->assertNull( $row->meta_value );
+
+		$wpdb->delete(
+			$wpdb->postmeta,
+			array(
+				'meta_key' => $key,
+				'meta_value' => NULL
+			),
+			array( '%s', '%s' )
+		);
+
+		$row = $wpdb->get_row( "SELECT * FROM $wpdb->postmeta WHERE meta_key='$key'" );
+
+		$this->assertNull( $row );
+	}
+
+	/**
+	 * @ticket 34903
+	 */
+	function test_close() {
+		global $wpdb;
+
+		$this->assertTrue( $wpdb->close() );
+		$this->assertFalse( $wpdb->close() );
+
+		$this->assertFalse( $wpdb->ready );
+		$this->assertFalse( $wpdb->has_connected );
+
+		$wpdb->check_connection();
+
+		$this->assertTrue( $wpdb->close() );
+
+		$wpdb->check_connection();
+	}
+
+	/**
+	 * @ticket 36917
+	 */
+	function test_charset_not_determined_when_disconnected() {
+		global $wpdb;
+
+		$charset = 'utf8';
+		$collate = 'this_isnt_a_collation';
+
+		$wpdb->close();
+
+		$result = $wpdb->determine_charset( $charset, $collate );
+
+		$this->assertSame( compact( 'charset', 'collate' ), $result );
+
+		$wpdb->check_connection();
+	}
+
+	/**
+	 * @ticket 36917
+	 */
+	function test_charset_switched_to_utf8mb4() {
+		global $wpdb;
+
+		if ( ! $wpdb->has_cap( 'utf8mb4' ) ) {
+			$this->markTestSkipped( 'This test requires utf8mb4 support.' );
+		}
+
+		$charset = 'utf8';
+		$collate = 'utf8_general_ci';
+
+		$result = $wpdb->determine_charset( $charset, $collate );
+
+		$this->assertSame( 'utf8mb4', $result['charset'] );
+	}
+
+	/**
+	 * @ticket 32105
+	 * @ticket 36917
+	 */
+	function test_collate_switched_to_utf8mb4_520() {
+		global $wpdb;
+
+		if ( ! $wpdb->has_cap( 'utf8mb4_520' ) ) {
+			$this->markTestSkipped( 'This test requires utf8mb4_520 support.' );
+		}
+
+		$charset = 'utf8';
+		$collate = 'utf8_general_ci';
+
+		$result = $wpdb->determine_charset( $charset, $collate );
+
+		$this->assertSame( 'utf8mb4_unicode_520_ci', $result['collate'] );
+	}
+
+	/**
+	 * @ticket 32405
+	 * @ticket 36917
+	 */
+	function test_non_unicode_collations() {
+		global $wpdb;
+
+		if ( ! $wpdb->has_cap( 'utf8mb4' ) ) {
+			$this->markTestSkipped( 'This test requires utf8mb4 support.' );
+		}
+
+		$charset = 'utf8';
+		$collate = 'utf8_swedish_ci';
+
+		$result = $wpdb->determine_charset( $charset, $collate );
+
+		$this->assertSame( 'utf8mb4_swedish_ci', $result['collate'] );
 	}
 }

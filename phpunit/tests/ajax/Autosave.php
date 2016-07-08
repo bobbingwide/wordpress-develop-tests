@@ -12,7 +12,6 @@ require_once( ABSPATH . 'wp-admin/includes/ajax-actions.php' );
  * @subpackage UnitTests
  * @since      3.4.0
  * @group      ajax
- * @runTestsInSeparateProcesses
  */
 class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 
@@ -22,11 +21,27 @@ class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 	 */
 	protected $_post = null;
 
-	/**
-	 * user_id
-	 * @var int
-	 */
-	protected $user_id = 0;
+	protected static $admin_id = 0;
+	protected static $editor_id = 0;
+	protected static $post;
+	protected static $post_id;
+	protected static $user_ids = array();
+
+	public static function wpSetUpBeforeClass( $factory ) {
+		self::$user_ids[] = self::$admin_id = $factory->user->create( array( 'role' => 'administrator' ) );
+		self::$user_ids[] = self::$editor_id = $factory->user->create( array( 'role' => 'editor' ) );
+
+		self::$post_id = $factory->post->create( array( 'post_status' => 'draft' ) );
+		self::$post = get_post( self::$post_id );
+	}
+
+	public static function wpTearDownAfterClass() {
+		foreach ( self::$user_ids as $user_id ) {
+			self::delete_user( $user_id );
+		}
+
+		wp_delete_post( self::$post_id, true );
+	}
 
 	/**
 	 * Set up the test fixture
@@ -34,20 +49,7 @@ class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 	public function setUp() {
 		parent::setUp();
 		// Set a user so the $post has 'post_author'
-		$this->user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
-		wp_set_current_user( $this->user_id );
-
-		$post_id = $this->factory->post->create( array( 'post_status' => 'draft' ) );
-		$this->_post = get_post( $post_id );
-	}
-
-	/**
-	 * Tear down the test fixture.
-	 * Reset the current user
-	 */
-	public function tearDown() {
-		parent::tearDown();
-		wp_set_current_user( 0 );
+		wp_set_current_user( self::$admin_id );
 	}
 
 	/**
@@ -56,7 +58,7 @@ class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 	 */
 	public function test_autosave_post() {
 		// The original post_author
-		wp_set_current_user( $this->user_id );
+		wp_set_current_user( self::$admin_id );
 
 		// Set up the $_POST request
 		$md5 = md5( uniqid() );
@@ -65,9 +67,9 @@ class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 			'_nonce' => wp_create_nonce( 'heartbeat-nonce' ),
 			'data' => array(
 				'wp_autosave' => array(
-				    'post_id'       => $this->_post->ID,
-				    '_wpnonce'      => wp_create_nonce( 'update-post_' . $this->_post->ID ),
-				    'post_content'  => $this->_post->post_content . PHP_EOL . $md5,
+				    'post_id'       => self::$post_id,
+				    '_wpnonce'      => wp_create_nonce( 'update-post_' . self::$post->ID ),
+				    'post_content'  => self::$post->post_content . PHP_EOL . $md5,
 					'post_type'     => 'post',
 				),
 			),
@@ -88,24 +90,23 @@ class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 		$this->assertTrue( $response['wp_autosave']['success'] );
 
 		// Check that the edit happened
-		$post = get_post( $this->_post->ID );
-		$this->assertGreaterThanOrEqual( 0, strpos( $post->post_content, $md5 ) );
+		$post = get_post( self::$post_id );
+		$this->assertGreaterThanOrEqual( 0, strpos( self::$post->post_content, $md5 ) );
 	}
-	
+
 	/**
 	 * Test autosaving a locked post
 	 * @return void
 	 */
 	public function test_autosave_locked_post() {
 		// Lock the post to another user
-		$another_user_id = $this->factory->user->create( array( 'role' => 'editor' ) );
-		wp_set_current_user( $another_user_id );
-		wp_set_post_lock( $this->_post->ID );
+		wp_set_current_user( self::$editor_id );
+		wp_set_post_lock( self::$post_id );
 
-		wp_set_current_user( $this->user_id );
+		wp_set_current_user( self::$admin_id );
 
 		// Ensure post is locked
-		$this->assertEquals( $another_user_id, wp_check_post_lock( $this->_post->ID ) );
+		$this->assertEquals( self::$editor_id, wp_check_post_lock( self::$post_id ) );
 
 		// Set up the $_POST request
 		$md5 = md5( uniqid() );
@@ -114,9 +115,9 @@ class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 			'_nonce' => wp_create_nonce( 'heartbeat-nonce' ),
 			'data' => array(
 				'wp_autosave' => array(
-				    'post_id'       => $this->_post->ID,
-				    '_wpnonce'      => wp_create_nonce( 'update-post_' . $this->_post->ID ),
-				    'post_content'  => $this->_post->post_content . PHP_EOL . $md5,
+				    'post_id'       => self::$post_id,
+				    '_wpnonce'      => wp_create_nonce( 'update-post_' . self::$post_id ),
+				    'post_content'  => self::$post->post_content . PHP_EOL . $md5,
 					'post_type'     => 'post',
 				),
 			),
@@ -136,11 +137,11 @@ class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 		$this->assertTrue( $response['wp_autosave']['success'] );
 
 		// Check that the original post was NOT edited
-		$post = get_post( $this->_post->ID );
+		$post = get_post( self::$post_id );
 		$this->assertFalse( strpos( $post->post_content, $md5 ) );
 
 		// Check if the autosave post was created
-		$autosave = wp_get_post_autosave( $this->_post->ID, get_current_user_id() );
+		$autosave = wp_get_post_autosave( self::$post_id, get_current_user_id() );
 		$this->assertNotEmpty( $autosave );
 		$this->assertGreaterThanOrEqual( 0, strpos( $autosave->post_content, $md5 ) );
 	}
@@ -151,7 +152,7 @@ class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 	 */
 	public function test_with_invalid_nonce( ) {
 
-		wp_set_current_user( $this->user_id );
+		wp_set_current_user( self::$admin_id );
 
 		// Set up the $_POST request
 		$_POST = array(
@@ -159,7 +160,7 @@ class Tests_Ajax_Autosave extends WP_Ajax_UnitTestCase {
 			'_nonce' => wp_create_nonce( 'heartbeat-nonce' ),
 			'data' => array(
 				'wp_autosave' => array(
-				    'post_id'  => $this->_post->ID,
+				    'post_id'  => self::$post_id,
 				    '_wpnonce' => substr( md5( uniqid() ), 0, 10 ),
 				),
 			),

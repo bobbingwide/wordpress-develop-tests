@@ -374,7 +374,7 @@ EOF;
 		$this->assertEquals( '&frac34;', wp_kses_normalize_entities( '&frac34;' ) );
 		$this->assertEquals( '&there4;', wp_kses_normalize_entities( '&there4;' ) );
 	}
-	
+
 	/**
 	 * Test removal of invalid binary data for HTML.
 	 *
@@ -410,5 +410,258 @@ EOF;
 				"\t\r\n word \n\r\t",
 			),
 		);
+	}
+
+	/**
+	 * Test removal of '\0' strings.
+	 *
+	 * @ticket 28699
+	 * @dataProvider data_slash_zero_removal
+	 */
+	function test_slash_zero_removal( $input, $output ) {
+		global $allowedposttags;
+
+		return $this->assertEquals( $output, wp_kses( $input, $allowedposttags ) );
+	}
+
+	function data_slash_zero_removal() {
+		return array(
+			array(
+				'This \\0 should be no big deal.',
+				'This \\0 should be no big deal.',
+			),
+			array(
+				'<div>This \\0 should be no big deal.</div>',
+				'<div>This \\0 should be no big deal.</div>',
+			),
+			array(
+				'<div align="\\0left">This should be no big deal.</div>',
+				'<div align="\\0left">This should be no big deal.</div>',
+			),
+			array(
+				'This <div style="float:\\0left"> is more of a concern.',
+				'This <div style="float:left"> is more of a concern.',
+			),
+			array(
+				'This <div style="float:\\0\\0left"> is more of a concern.',
+				'This <div style="float:left"> is more of a concern.',
+			),
+			array(
+				'This <div style="float:\\\\00left"> is more of a concern.',
+				'This <div style="float:left"> is more of a concern.',
+			),
+			array(
+				'This <div style="float:\\\\\\\\0000left"> is more of a concern.',
+				'This <div style="float:left"> is more of a concern.',
+			),
+			array(
+				'This <div style="float:\\0000left"> is more of a concern.',
+				'This <div style="float:left"> is more of a concern.',
+			),
+			array(
+				'<style type="text/css">div {background-image:\\0}</style>',
+				'div {background-image:\\0}',
+			),
+		);
+	}
+
+	/**
+	 * Test new function wp_kses_hair_parse().
+	 *
+	 * @dataProvider data_hair_parse
+	 */
+	function test_hair_parse( $input, $output ) {
+		return $this->assertEquals( $output, wp_kses_hair_parse( $input ) );
+	}
+
+	function data_hair_parse() {
+		return array(
+			array(
+				'title="hello" href="#" id="my_id" ',
+				array( 'title="hello" ', 'href="#" ', 'id="my_id" ' ),
+			),
+			array(
+				'[shortcode attr="value"] href="http://www.google.com/"title="moo"disabled',
+				array( '[shortcode attr="value"] ', 'href="http://www.google.com/"', 'title="moo"', 'disabled' ),
+			),
+			array(
+				'',
+				array(),
+			),
+			array(
+				'a',
+				array( 'a' ),
+			),
+			array(
+				'title="hello"disabled href=# id=\'my_id\'',
+				array( 'title="hello"', 'disabled ', 'href=# ', "id='my_id'" ),
+			),
+			array(
+				'     ', // Calling function is expected to strip leading whitespace.
+				false,
+			),
+			array(
+				'abcd=abcd"abcd"',
+				false,
+			),
+			array(
+				"array[1]='z'z'z'z",
+				false,
+			),
+		);
+	}
+
+	/**
+	 * Test new function wp_kses_attr_parse().
+	 *
+	 * @dataProvider data_attr_parse
+	 */
+	function test_attr_parse( $input, $output ) {
+		return $this->assertEquals( $output, wp_kses_attr_parse( $input ) );
+	}
+
+	function data_attr_parse() {
+		return array(
+			array(
+				'<a title="hello" href="#" id="my_id" >',
+				array( '<a ', 'title="hello" ', 'href="#" ', 'id="my_id" ', '>' ),
+			),
+			array(
+				'<a [shortcode attr="value"] href="http://www.google.com/"title="moo"disabled>',
+				array( '<a ', '[shortcode attr="value"] ', 'href="http://www.google.com/"', 'title="moo"', 'disabled', '>' ),
+			),
+			array(
+				'',
+				false,
+			),
+			array(
+				'a',
+				false,
+			),
+			array(
+				'<a>',
+				array( '<a', '>' ),
+			),
+			array(
+				'<a%%&&**>',
+				false,
+			),
+			array(
+				'<a title="hello"disabled href=# id=\'my_id\'>',
+				array( '<a ', 'title="hello"', 'disabled ', 'href=# ', "id='my_id'", ">" ),
+			),
+			array(
+				'<a     >',
+				array( '<a     ', '>' ),
+			),
+			array(
+				'<a abcd=abcd"abcd">',
+				false,
+			),
+			array(
+				"<a array[1]='z'z'z'z>",
+				false,
+			),
+			array(
+				'<img title="hello" src="#" id="my_id" />',
+				array( '<img ', 'title="hello" ', 'src="#" ', 'id="my_id"', ' />' ),
+			),
+		);
+	}
+
+	/**
+	 * Test new function wp_kses_one_attr().
+	 *
+	 * @dataProvider data_one_attr
+	 */
+	function test_one_attr( $element, $input, $output ) {
+		return $this->assertEquals( $output, wp_kses_one_attr( $input, $element ) );
+	}
+
+	function data_one_attr() {
+		return array(
+			array(
+				'a',
+				' title="hello" ',
+				' title="hello" ',
+			),
+			array(
+				'a',
+				'title  =  "hello"',
+				'title="hello"',
+			),
+			array(
+				'a',
+				"title='hello'",
+				"title='hello'",
+			),
+			array(
+				'a',
+				'title=hello',
+				'title="hello"',
+			),
+			array(
+				'a',
+				'href="javascript:alert(1)"',
+				'href="alert(1)"',
+			),
+			array(
+				'a',
+				'style ="style "',
+				'style="style"',
+			),
+			array(
+				'a',
+				'style="style "',
+				'style="style"',
+			),
+			array(
+				'a',
+				'style ="style ="',
+				'',
+			),
+			array(
+				'img',
+				'src="mypic.jpg"',
+				'src="mypic.jpg"',
+			),
+			array(
+				'img',
+				'onerror=alert(1)',
+				'',
+			),
+			array(
+				'img',
+				'title=>',
+				'title="&gt;"',
+			),
+			array(
+				'img',
+				'title="&garbage";"',
+				'title="&amp;garbage&quot;;"',
+			),
+		);
+	}
+
+	/**
+	 * @ticket 34063
+	 */
+	function test_bdo() {
+		global $allowedposttags;
+
+		$input = '<p>This is <bdo dir="rtl">a BDO tag</bdo>. Weird, <bdo dir="ltr">right?</bdo></p>';
+
+		$this->assertEquals( $input, wp_kses( $input, $allowedposttags ) );
+	}
+
+	/**
+	 * @ticket 35079
+	 */
+	function test_ol_reversed() {
+		global $allowedposttags;
+
+		$input = '<ol reversed="reversed"><li>Item 1</li><li>Item 2</li><li>Item 3</li></ol>';
+
+		$this->assertEquals( $input, wp_kses( $input, $allowedposttags ) );
 	}
 }

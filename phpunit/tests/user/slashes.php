@@ -8,12 +8,12 @@
 class Tests_User_Slashes extends WP_UnitTestCase {
 	function setUp() {
 		parent::setUp();
-		$this->author_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
-		$this->old_current_user = get_current_user_id();
+		$this->author_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+
 		wp_set_current_user( $this->author_id );
 
 		// it is important to test with both even and odd numbered slashes as
-		// kses does a strip-then-add slashes in some of it's function calls
+		// kses does a strip-then-add slashes in some of its function calls
 		$this->slash_1 = 'String with 1 slash \\';
 		$this->slash_2 = 'String with 2 slashes \\\\';
 		$this->slash_3 = 'String with 3 slashes \\\\\\';
@@ -21,11 +21,6 @@ class Tests_User_Slashes extends WP_UnitTestCase {
 		$this->slash_5 = 'String with 5 slashes \\\\\\\\\\';
 		$this->slash_6 = 'String with 6 slashes \\\\\\\\\\\\';
 		$this->slash_7 = 'String with 7 slashes \\\\\\\\\\\\\\';
-	}
-
-	function tearDown() {
-		wp_set_current_user( $this->old_current_user );
-		parent::tearDown();
 	}
 
 	/**
@@ -83,7 +78,7 @@ class Tests_User_Slashes extends WP_UnitTestCase {
 	 *
 	 */
 	function test_edit_user() {
-		$id = $this->factory->user->create();
+		$id = self::factory()->user->create();
 
 		$_POST = $_GET = $_REQUEST = array();
 		$_POST['role'] = 'subscriber';
@@ -173,7 +168,7 @@ class Tests_User_Slashes extends WP_UnitTestCase {
 	 *
 	 */
 	function test_wp_update_user() {
-		$id = $this->factory->user->create();
+		$id = self::factory()->user->create();
 		$id = wp_update_user(array(
 			'ID' => $id,
 			'role' => 'subscriber',

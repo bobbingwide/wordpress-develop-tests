@@ -137,6 +137,10 @@ class Tests_Image_Functions extends WP_UnitTestCase {
 
 			// Save a file as each mime type, assert it works
 			foreach ( $mime_types as $mime_type ) {
+				if ( ! $img->supports_mime_type( $mime_type ) ) {
+					continue;
+				}
+
 				$file = wp_tempnam();
 				$ret = wp_save_image_file( $file, $img, $mime_type, 1 );
 				$this->assertNotEmpty( $ret );
@@ -228,6 +232,10 @@ class Tests_Image_Functions extends WP_UnitTestCase {
 
 			$temp = get_temp_dir();
 			foreach ( $mime_types as $ext => $mime_type ) {
+				if ( ! $img->supports_mime_type( $mime_type ) ) {
+					continue;
+				}
+
 				$file = wp_unique_filename( $temp, uniqid() . ".$ext" );
 				$ret = $img->save( trailingslashit( $temp ) . $file );
 				$this->assertNotEmpty( $ret );
@@ -292,7 +300,11 @@ class Tests_Image_Functions extends WP_UnitTestCase {
 		if ( !function_exists( 'imagejpeg' ) )
 			$this->markTestSkipped( 'jpeg support unavailable' );
 
-		$file = wp_crop_image( 'http://asdftestblog1.files.wordpress.com/2008/04/canola.jpg',
+		if ( ! extension_loaded( 'openssl' ) ) {
+			$this->markTestSkipped( 'Tests_Image_Functions::test_wp_crop_image_url() requires openssl.' );
+		}
+
+		$file = wp_crop_image( 'https://asdftestblog1.files.wordpress.com/2008/04/canola.jpg',
 							  0, 0, 100, 100, 100, 100, false,
 							  DIR_TESTDATA . '/images/' . rand_str() . '.jpg' );
 		$this->assertNotInstanceOf( 'WP_Error', $file );
@@ -312,7 +324,11 @@ class Tests_Image_Functions extends WP_UnitTestCase {
 	}
 
 	public function test_wp_crop_image_url_not_exist() {
-		$file = wp_crop_image( 'http://asdftestblog1.files.wordpress.com/2008/04/canoladoesnotexist.jpg',
+		if ( ! extension_loaded( 'openssl' ) ) {
+			$this->markTestSkipped( 'Tests_Image_Functions::test_wp_crop_image_url_not_exist() requires openssl.' );
+		}
+
+		$file = wp_crop_image( 'https://asdftestblog1.files.wordpress.com/2008/04/canoladoesnotexist.jpg',
 							  0, 0, 100, 100, 100, 100 );
 		$this->assertInstanceOf( 'WP_Error', $file );
 	}

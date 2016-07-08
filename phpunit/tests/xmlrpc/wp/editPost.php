@@ -95,6 +95,25 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 		$this->assertEquals( $contributor_id, $out->post_author );
 	}
 
+	/**
+	 * @ticket 24916
+	 */
+	function test_capable_reassign_author_to_self() {
+		$contributor_id = $this->make_user_by_role( 'contributor' );
+		$editor_id = $this->make_user_by_role( 'editor' );
+
+		$post = array( 'post_title' => 'Post test', 'post_author' => $contributor_id );
+		$post_id = wp_insert_post( $post );
+
+		$post2 = array( 'post_author' => $editor_id );
+		$result = $this->myxmlrpcserver->wp_editPost( array( 1, 'editor', 'editor', $post_id, $post2 ) );
+		$this->assertNotInstanceOf( 'IXR_Error', $result );
+		$this->assertTrue($result);
+
+		$out = get_post( $post_id );
+		$this->assertEquals( $editor_id, $out->post_author );
+	}
+
 	function test_post_thumbnail() {
 		add_theme_support( 'post-thumbnails' );
 
@@ -107,17 +126,7 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 
 		// create attachment
 		$filename = ( DIR_TESTDATA.'/images/a2-small.jpg' );
-		$contents = file_get_contents( $filename );
-		$upload = wp_upload_bits( $filename, null, $contents );
-		$this->assertTrue( empty( $upload['error'] ) );
-
-		$attachment = array(
-			'post_title' => 'Post Thumbnail',
-			'post_type' => 'attachment',
-			'post_mime_type' => 'image/jpeg',
-			'guid' => $upload['url']
-		);
-		$attachment_id = wp_insert_attachment( $attachment, $upload['file'], $post_id );
+		$attachment_id = self::factory()->attachment->create_upload_object( $filename, $post_id );
 
 		// add post thumbnail to post that does not have one
 		$post2 = array( 'post_thumbnail' => $attachment_id );
@@ -139,8 +148,7 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 		$this->assertEquals( $attachment_id, get_post_meta( $post_id, '_thumbnail_id', true ) );
 
 		// create another attachment
-		$attachment2 = array_merge( $attachment, array( 'post_title' => 'Post Thumbnail 2' ) );
-		$attachment2_id = wp_insert_attachment( $attachment2, $upload['file'], $post_id );
+		$attachment2_id = self::factory()->attachment->create_upload_object( $filename, $post_id );
 
 		// change the post's post_thumbnail
 		$post4 = array( 'post_thumbnail' => $attachment2_id );
@@ -200,7 +208,7 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 	function test_capable_unsticky() {
 		$editor_id = $this->make_user_by_role( 'editor' );
 
-		$post_id = $this->factory->post->create( array( 'post_author' => $editor_id ) );
+		$post_id = self::factory()->post->create( array( 'post_author' => $editor_id ) );
 		stick_post( $post_id );
 
 		$post2 = array( 'sticky' => false );
@@ -212,7 +220,7 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 	function test_password_transition_unsticky() {
 		// when transitioning to private status or adding a post password, post should be un-stuck
 		$editor_id = $this->make_user_by_role( 'editor' );
-		$post_id = $this->factory->post->create( array( 'post_author' => $editor_id ) );
+		$post_id = self::factory()->post->create( array( 'post_author' => $editor_id ) );
 		stick_post( $post_id );
 
 		$post2 = array( 'post_password' => 'foobar',  'sticky' => false );
@@ -226,7 +234,7 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 
 		$yesterday = strtotime( '-1 day' );
 
-		$post_id = $this->factory->post->create( array(
+		$post_id = self::factory()->post->create( array(
 			'post_title'   => 'Post Revision Test',
 			'post_content' => 'Not edited',
 			'post_author'  => $editor_id,
@@ -255,7 +263,7 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 	function test_edit_attachment() {
 		$editor_id = $this->make_user_by_role( 'editor' );
 
-		$post_id = $this->factory->post->create( array(
+		$post_id = self::factory()->post->create( array(
 			'post_title'   => 'Post Revision Test',
 			'post_content' => 'Not edited',
 			'post_status'  => 'inherit',
@@ -274,7 +282,7 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 	function test_use_invalid_post_status() {
 		$editor_id = $this->make_user_by_role( 'editor' );
 
-		$post_id = $this->factory->post->create( array(
+		$post_id = self::factory()->post->create( array(
 			'post_title'   => 'Post Revision Test',
 			'post_content' => 'Not edited',
 			'post_author'  => $editor_id,
@@ -294,9 +302,9 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 	function test_loss_of_categories_on_edit() {
 		$editor_id = $this->make_user_by_role( 'editor' );
 
-		$post_id = $this->factory->post->create( array( 'post_author'  => $editor_id ) );
-		$term_id = $this->factory->category->create();
-		$this->factory->term->add_post_terms( $post_id, $term_id, 'category', true );
+		$post_id = self::factory()->post->create( array( 'post_author'  => $editor_id ) );
+		$term_id = self::factory()->category->create();
+		self::factory()->term->add_post_terms( $post_id, $term_id, 'category', true );
 		$term_ids = wp_list_pluck( get_the_category( $post_id ), 'term_id' );
 		$this->assertContains( $term_id, $term_ids );
 
@@ -314,9 +322,9 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 	function test_clear_categories_on_edit() {
 		$editor_id = $this->make_user_by_role( 'editor' );
 
-		$post_id = $this->factory->post->create( array( 'post_author'  => $editor_id ) );
-		$term_id = $this->factory->category->create();
-		$this->factory->term->add_post_terms( $post_id, $term_id, 'category', true );
+		$post_id = self::factory()->post->create( array( 'post_author'  => $editor_id ) );
+		$term_id = self::factory()->category->create();
+		self::factory()->term->add_post_terms( $post_id, $term_id, 'category', true );
 		$term_ids = wp_list_pluck( get_the_category( $post_id ), 'term_id' );
 		$this->assertContains( $term_id, $term_ids );
 
@@ -357,7 +365,7 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 		$editor_id = $this->make_user_by_role( 'editor' );
 
 		// Add a dummy post
-		$post_id = $this->factory->post->create( array(
+		$post_id = self::factory()->post->create( array(
 			'post_title'   => 'Post Enclosure Test',
 			'post_content' => 'Fake content',
 			'post_author'  => $editor_id,
@@ -392,5 +400,41 @@ class Tests_XMLRPC_wp_editPost extends WP_XMLRPC_UnitTestCase {
 
 		// Check that the old enclosure is in the enclosure meta
 		$this->assertTrue( in_array( $enclosure_string, get_post_meta( $post_id, 'enclosure' ) ) );
+	}
+
+	/**
+	 * @ticket 35874
+	 */
+	function test_draft_not_prematurely_published() {
+		$editor_id = $this->make_user_by_role( 'editor' );
+
+		/**
+		 * We have to use wp_newPost method, rather than the factory
+		 * post->create method to create the database conditions that exhibit
+		 * the bug.
+		 */
+		$post = array(
+			'post_title'  => 'Test',
+			'post_status' => 'draft',
+		);
+		$post_id = $this->myxmlrpcserver->wp_newPost( array( 1, 'editor', 'editor', $post ) );
+
+		// Change the post's status to publish and date to future.
+		$future_time = strtotime( '+1 day' );
+		$future_date = new IXR_Date( $future_time );
+		$new_post_content = array(
+			'ID'          => $post_id,
+			'post_title'  => 'Updated',
+			'post_status' => 'publish',
+			'post_date'   => $future_date,
+		);
+
+		$this->myxmlrpcserver->wp_editPost( array( 1, 'editor', 'editor', $post_id, $new_post_content ) );
+
+		$after = get_post( $post_id );
+		$this->assertEquals( 'future', $after->post_status );
+
+		$future_date_string = strftime( '%Y-%m-%d %H:%M:%S', $future_time );
+		$this->assertEquals( $future_date_string, $after->post_date );
 	}
 }

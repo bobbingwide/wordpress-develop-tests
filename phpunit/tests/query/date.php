@@ -12,7 +12,7 @@ class Tests_Query_Date extends WP_UnitTestCase {
 
 	static $post_ids = array();
 
-	public static function setUpBeforeClass() {
+	public static function wpSetUpBeforeClass( $factory ) {
 		// Be careful modifying this. Tests are coded to expect this exact sample data.
 		$post_dates = array(
 			'1972-05-24 14:53:45',
@@ -40,21 +40,15 @@ class Tests_Query_Date extends WP_UnitTestCase {
 			'2025-05-20 10:13:01',
 		);
 
-		$factory = new WP_UnitTest_Factory;
-
 		foreach ( $post_dates as $post_date ) {
 			self::$post_ids[] = $factory->post->create( array( 'post_date' => $post_date ) );
 		}
-
-		self::commit_transaction();
 	}
 
-	public static function tearDownAfterClass() {
+	public static function wpTearDownAfterClass() {
 		foreach ( self::$post_ids as $post_id ) {
 			wp_delete_post( $post_id, true );
 		}
-
-		self::commit_transaction();
 	}
 
 	public function setUp() {
@@ -262,6 +256,18 @@ class Tests_Query_Date extends WP_UnitTestCase {
 		);
 
 		$this->assertEquals( $expected_dates, wp_list_pluck( $posts, 'post_date' ) );
+	}
+
+	/**
+	 * @ticket 36718
+	 */
+	public function test_non_scalar_m_should_be_discarded() {
+		$expected = $this->_get_query_result( );
+		$posts    = $this->_get_query_result( array(
+			'm' => array( '1234' ), // ignored
+		) );
+
+		$this->assertEquals( $expected, $posts );
 	}
 
 	public function test_simple_monthnum_expecting_results() {

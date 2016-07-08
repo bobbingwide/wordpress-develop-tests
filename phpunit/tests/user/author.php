@@ -1,20 +1,21 @@
 <?php
 
 /**
- * Test functions in wp-includes/author.php, author-template.php
+ * Test functions in wp-includes/author-template.php
  *
  * @group author
  * @group user
  */
-class Tests_User_Author extends WP_UnitTestCase {
-	protected $old_post_id = 0;
+class Tests_User_Author_Template extends WP_UnitTestCase {
 	protected $author_id = 0;
 	protected $post_id = 0;
+
+	private $permalink_structure;
 
 	function setUp() {
 		parent::setUp();
 
-		$this->author_id = $this->factory->user->create( array(
+		$this->author_id = self::factory()->user->create( array(
 			'role' => 'author',
 			'user_login' => 'test_author',
 			'description' => 'test_author',
@@ -30,7 +31,7 @@ class Tests_User_Author extends WP_UnitTestCase {
 		);
 
 		// insert a post and make sure the ID is ok
-		$this->post_id = $this->factory->post->create( $post );
+		$this->post_id = self::factory()->post->create( $post );
 
 		setup_postdata( get_post( $this->post_id ) );
 	}
@@ -82,4 +83,70 @@ class Tests_User_Author extends WP_UnitTestCase {
 		$GLOBALS['post'] = $this->post_id;
 		$this->assertEquals( 1, get_the_author_posts() );
 	}
+
+	/**
+	 * @ticket 30904
+	 */
+	function test_get_the_author_posts_with_custom_post_type() {
+		register_post_type( 'wptests_pt' );
+
+		$cpt_ids = self::factory()->post->create_many( 2, array(
+			'post_author' => $this->author_id,
+			'post_type'   => 'wptests_pt',
+		) );
+		$GLOBALS['post'] = $cpt_ids[0];
+
+		$this->assertEquals( 2, get_the_author_posts() );
+
+		_unregister_post_type( 'wptests_pt' );
+	}
+
+	/**
+	 * @ticket 30355
+	 */
+	public function test_get_the_author_posts_link_no_permalinks() {
+		$author = self::factory()->user->create_and_get( array(
+			'display_name'  => 'Foo',
+			'user_nicename' => 'bar'
+		) );
+
+		$GLOBALS['authordata'] = $author->data;
+
+		$link = get_the_author_posts_link();
+
+		$url = sprintf( 'http://%1$s/?author=%2$s', WP_TESTS_DOMAIN, $author->ID );
+
+		$this->assertContains( $url, $link );
+		$this->assertContains( 'Posts by Foo', $link );
+		$this->assertContains( '>Foo</a>', $link );
+
+		unset( $GLOBALS['authordata'] );
+	}
+
+	/**
+	 * @ticket 30355
+	 */
+	public function test_get_the_author_posts_link_with_permalinks() {
+		$this->set_permalink_structure( '/%postname%/' );
+
+		$author = self::factory()->user->create_and_get( array(
+			'display_name'  => 'Foo',
+			'user_nicename' => 'bar'
+		) );
+
+		$GLOBALS['authordata'] = $author;
+
+		$link = get_the_author_posts_link();
+
+		$url = sprintf( 'http://%1$s/author/%2$s/', WP_TESTS_DOMAIN, $author->user_nicename );
+
+		$this->set_permalink_structure( '' );
+
+		$this->assertContains( $url, $link );
+		$this->assertContains( 'Posts by Foo', $link );
+		$this->assertContains( '>Foo</a>', $link );
+
+		unset( $GLOBALS['authordata'] );
+	}
+
 }

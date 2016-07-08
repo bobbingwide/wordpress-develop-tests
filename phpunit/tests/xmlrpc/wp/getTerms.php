@@ -35,7 +35,7 @@ class Tests_XMLRPC_wp_getTerms extends WP_XMLRPC_UnitTestCase {
 		$result = $this->myxmlrpcserver->wp_getTerms( array( 1, 'subscriber', 'subscriber', 'category' ) );
 		$this->assertInstanceOf( 'IXR_Error', $result );
 		$this->assertEquals( 401, $result->code );
-		$this->assertEquals( __( 'You are not allowed to assign terms in this taxonomy.' ), $result->message );
+		$this->assertEquals( __( 'Sorry, you are not allowed to assign terms in this taxonomy.' ), $result->message );
 	}
 
 	function test_valid_terms() {
@@ -106,8 +106,8 @@ class Tests_XMLRPC_wp_getTerms extends WP_XMLRPC_UnitTestCase {
 		$cat1 = wp_create_category( 'wp.getTerms_' . rand_str( 16 ) );
 		$cat2 = wp_create_category( 'wp.getTerms_' . rand_str( 16 ) );
 
-		$this->factory->post->create_many( 5, array( 'post_category' => array( $cat1 ) ) );
-		$this->factory->post->create_many( 3, array( 'post_category' => array( $cat2 ) ) );
+		self::factory()->post->create_many( 5, array( 'post_category' => array( $cat1 ) ) );
+		self::factory()->post->create_many( 3, array( 'post_category' => array( $cat2 ) ) );
 
 		$filter = array( 'orderby' => 'count', 'order' => 'DESC' );
 		$results = $this->myxmlrpcserver->wp_getTerms( array( 1, 'editor', 'editor', 'category', $filter ) );

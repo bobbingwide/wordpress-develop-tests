@@ -10,20 +10,18 @@ if ( is_multisite() ) :
  * @group multisite
  */
 class Tests_Multisite_Option extends WP_UnitTestCase {
-	protected $suppress = false; 
+	protected $suppress = false;
 
 	function setUp() {
 		global $wpdb;
 		parent::setUp();
 		$this->suppress = $wpdb->suppress_errors();
-
-		$_SERVER['REMOTE_ADDR'] = null;
 	}
 
 	function tearDown() {
 		global $wpdb;
-		parent::tearDown();
 		$wpdb->suppress_errors( $this->suppress );
+		parent::tearDown();
 	}
 
 	function test_from_same_site() {
@@ -100,25 +98,15 @@ class Tests_Multisite_Option extends WP_UnitTestCase {
 	}
 
 	function test_with_another_site() {
-		global $current_site, $base;
-
-		$title = 'Fooblog';
-		$domain = 'blogoptiontest';
-
-		if ( is_subdomain_install() ) {
-			$newdomain = $domain . '.' . preg_replace( '|^www\.|', '', $current_site->domain );
-			$path = $base;
-		} else {
-			$newdomain = $current_site->domain;
-			$path = $base . $domain . '/';
-		}
-
-		$email = 'foo@foo.foo';
-		$password = wp_generate_password( 12, false );
-		$user_id = wpmu_create_user( $domain, $password, $email );
+		$user_id = self::factory()->user->create();
 		$this->assertInternalType( 'integer', $user_id );
 
-		$blog_id = wpmu_create_blog( $newdomain, $path, $title, $user_id , array( 'public' => 1 ), $current_site->id );
+		$blog_id = self::factory()->blog->create( array(
+			'user_id' => $user_id,
+			'meta'    => array(
+				'public' => 1,
+			),
+		) );
 		$this->assertInternalType( 'integer', $blog_id );
 
 		$key = rand_str();
@@ -192,30 +180,56 @@ class Tests_Multisite_Option extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @ticket 21552
-	 * @ticket 23418
+	 * @dataProvider data_illegal_names
 	 */
-	function test_sanitize_ms_options() {
-		update_site_option( 'illegal_names', array( '', 'Woo', '' ) );
-		update_site_option( 'limited_email_domains', array(  'woo', '', 'boo.com', 'foo.net.biz..'  ) );
-		update_site_option( 'banned_email_domains', array(  'woo', '', 'boo.com', 'foo.net.biz..'  ) );
+	function test_sanitize_network_option_illegal_names( $option_value, $sanitized_option_value ) {
+		update_site_option( 'illegal_names', $option_value );
+		$this->assertEquals( $sanitized_option_value, get_site_option( 'illegal_names' ) );
+	}
 
-		$this->assertEquals( array( 'Woo' ), get_site_option( 'illegal_names' ) );
-		$this->assertEquals( array( 'woo', 'boo.com' ), get_site_option( 'limited_email_domains' ) );
-		$this->assertEquals( array( 'woo', 'boo.com' ), get_site_option( 'banned_email_domains' ) );
+	function data_illegal_names() {
+		return array(
+			array( array( '', 'Woo', '' ), array( 'Woo' ) ),
+			array( 'foo bar', array( 'foo', 'bar' ) ),
+			array( array(), '' ),
+		);
+	}
 
-		update_site_option( 'illegal_names', 'foo bar' );
-		update_site_option( 'limited_email_domains', "foo\nbar" );
-		update_site_option( 'banned_email_domains', "foo\nbar" );
+	/**
+	 * @dataProvider data_email_domains
+	 *
+	 * @param $option_value
+	 * @param $sanitized_option_value
+	 */
+	function test_sanitize_network_option_limited_email_domains( $option_value, $sanitized_option_value ) {
+		update_site_option( 'limited_email_domains', $option_value );
+		$this->assertEquals( $sanitized_option_value, get_site_option( 'limited_email_domains' ) );
+	}
 
-		$this->assertEquals( array( 'foo', 'bar' ), get_site_option( 'illegal_names' ) );
-		$this->assertEquals( array( 'foo', 'bar' ), get_site_option( 'limited_email_domains' ) );
-		$this->assertEquals( array( 'foo', 'bar' ), get_site_option( 'banned_email_domains' ) );
+	/**
+	 * @dataProvider data_email_domains
+	 *
+	 * @param $option_value
+	 * @param $sanitized_option_value
+	 */
+	function test_sanitize_network_option_banned_email_domains( $option_value, $sanitized_option_value ) {
+		update_site_option( 'banned_email_domains', $option_value );
+		$this->assertEquals( $sanitized_option_value, get_site_option( 'banned_email_domains' ) );
+	}
 
-		foreach ( array( 'illegal_names', 'limited_email_domains', 'banned_email_domains' ) as $option ) {
-			update_site_option( $option, array() );
-			$this->assertSame( '', get_site_option( $option ) );
-		}
+	function data_email_domains() {
+		return array(
+			array( array( 'woo', '', 'boo.com', 'foo.net.biz..' ), array( 'woo', 'boo.com' ) ),
+			array( "foo\nbar", array( 'foo', 'bar' ) ),
+			array( "foo\n\nbar", array( 'foo', 'bar' ) ),
+			array( "\nfoo\nbar\n", array( 'foo', 'bar' ) ),
+			array( "foo\nfoo.net.biz..", array( 'foo' ) ),
+			array( "foo\nfoo.net.biz..\nbar.com", array( 'foo', 'bar.com' ) ),
+			array( 'foo.', array( 'foo.' ) ),
+			array( '.foo', array( '.foo' ) ),
+			array( 'foo^net', '' ),
+			array( array(), '' ),
+		);
 	}
 }
 

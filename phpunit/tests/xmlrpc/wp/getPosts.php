@@ -52,9 +52,9 @@ class Tests_XMLRPC_wp_getPosts extends WP_XMLRPC_UnitTestCase {
 		));
 
 		$post_ids = array();
-		$num_posts = 17;
+		$num_posts = 4;
 		foreach ( range( 1, $num_posts ) as $i ) {
-			$post_ids[] = $this->factory->post->create( array(
+			$post_ids[] = self::factory()->post->create( array(
 				'post_type' => $cpt_name,
 				'post_date' => date( 'Y-m-d H:i:s', time() + $i )
 			) );
@@ -67,7 +67,7 @@ class Tests_XMLRPC_wp_getPosts extends WP_XMLRPC_UnitTestCase {
 
 		// page through results
 		$posts_found = array();
-		$filter['number'] = 5;
+		$filter['number'] = 2;
 		$filter['offset'] = 0;
 		do {
 			$presults = $this->myxmlrpcserver->wp_getPosts( array( 1, 'editor', 'editor', $filter ) );
@@ -78,10 +78,9 @@ class Tests_XMLRPC_wp_getPosts extends WP_XMLRPC_UnitTestCase {
 		$this->assertEquals( 0, count( array_diff( $post_ids, $posts_found ) ) );
 
 		// add comments to some of the posts
-		$random_posts = array_rand( $post_ids, $num_posts / 2 );
-		foreach ( $random_posts as $i ) {
-			$post = $post_ids[$i];
-			$this->factory->comment->create_post_comments( $post, rand( 1, 20 ) );
+		foreach ( $post_ids as $key => $post_id ) {
+			// Larger post IDs will get more comments.
+			self::factory()->comment->create_post_comments( $post_id, $key );
 		}
 
 		// get results ordered by comment count
@@ -96,7 +95,7 @@ class Tests_XMLRPC_wp_getPosts extends WP_XMLRPC_UnitTestCase {
 		}
 
 		// set one of the posts to draft and get drafts
-		$post = get_post( $post_ids[$random_posts[0]] );
+		$post = get_post( $post_ids[0] );
 		$post->post_status = 'draft';
 		wp_update_post( $post );
 		$filter3 = array( 'post_type' => $cpt_name, 'post_status' => 'draft' );
@@ -110,7 +109,7 @@ class Tests_XMLRPC_wp_getPosts extends WP_XMLRPC_UnitTestCase {
 
 	function test_fields() {
 		$this->make_user_by_role( 'editor' );
-		$this->factory->post->create();
+		self::factory()->post->create();
 
 		// check default fields
 		$results = $this->myxmlrpcserver->wp_getPosts( array( 1, 'editor', 'editor' ) );
@@ -137,8 +136,8 @@ class Tests_XMLRPC_wp_getPosts extends WP_XMLRPC_UnitTestCase {
 	function test_search() {
 		$this->make_user_by_role( 'editor' );
 
-		$post_ids[] = $this->factory->post->create( array( 'post_title' => 'First: ' . rand_str() ) );
-		$post_ids[] = $this->factory->post->create( array( 'post_title' => 'Second: ' . rand_str() ) );
+		$post_ids[] = self::factory()->post->create( array( 'post_title' => 'First: ' . rand_str() ) );
+		$post_ids[] = self::factory()->post->create( array( 'post_title' => 'Second: ' . rand_str() ) );
 
 		// Search for none of them
 		$filter = array( 's' => rand_str() );

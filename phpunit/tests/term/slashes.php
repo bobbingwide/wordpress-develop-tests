@@ -8,8 +8,8 @@
 class Tests_Term_Slashes extends WP_Ajax_UnitTestCase {
 	function setUp() {
 		parent::setUp();
-		$this->author_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
-		$this->old_current_user = get_current_user_id();
+		$this->author_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+
 		wp_set_current_user( $this->author_id );
 
 		$this->slash_1 = 'String with 1 slash \\';
@@ -19,11 +19,6 @@ class Tests_Term_Slashes extends WP_Ajax_UnitTestCase {
 		$this->slash_5 = 'String with 5 slashes \\\\\\\\\\';
 		$this->slash_6 = 'String with 6 slashes \\\\\\\\\\\\';
 		$this->slash_7 = 'String with 7 slashes \\\\\\\\\\\\\\';
-	}
-
-	function tearDown() {
-		wp_set_current_user( $this->old_current_user );
-		parent::tearDown();
 	}
 
 	/**
@@ -84,7 +79,7 @@ class Tests_Term_Slashes extends WP_Ajax_UnitTestCase {
 			'post_tag'
 		);
 		foreach ( $taxonomies as $taxonomy ) {
-			$id = $this->factory->term->create(array(
+			$id = self::factory()->term->create(array(
 				'taxonomy' => $taxonomy
 			));
 

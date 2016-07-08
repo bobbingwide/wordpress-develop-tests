@@ -8,12 +8,12 @@
 class Tests_Post_Slashes extends WP_UnitTestCase {
 	function setUp() {
 		parent::setUp();
-		$this->author_id = $this->factory->user->create( array( 'role' => 'editor' ) );
-		$this->old_current_user = get_current_user_id();
+		$this->author_id = self::factory()->user->create( array( 'role' => 'editor' ) );
+
 		wp_set_current_user( $this->author_id );
 
 		// it is important to test with both even and odd numbered slashes as
-		// kses does a strip-then-add slashes in some of it's function calls
+		// kses does a strip-then-add slashes in some of its function calls
 		$this->slash_1 = 'String with 1 slash \\';
 		$this->slash_2 = 'String with 2 slashes \\\\';
 		$this->slash_3 = 'String with 3 slashes \\\\\\';
@@ -23,17 +23,12 @@ class Tests_Post_Slashes extends WP_UnitTestCase {
 		$this->slash_7 = 'String with 7 slashes \\\\\\\\\\\\\\';
 	}
 
-	function tearDown() {
-		wp_set_current_user( $this->old_current_user );
-		parent::tearDown();
-	}
-
 	/**
 	 * Tests the controller function that expects slashed data
 	 *
 	 */
 	function test_edit_post() {
-		$id = $this->factory->post->create();
+		$id = self::factory()->post->create();
 
 		$_POST = array();
 		$_POST['post_ID'] = $id;
@@ -102,7 +97,7 @@ class Tests_Post_Slashes extends WP_UnitTestCase {
 	 *
 	 */
 	function test_wp_update_post() {
-		$id = $this->factory->post->create();
+		$id = self::factory()->post->create();
 
 		wp_update_post(array(
 			'ID' => $id,
@@ -129,4 +124,33 @@ class Tests_Post_Slashes extends WP_UnitTestCase {
 		$this->assertEquals( wp_unslash( $this->slash_6 ), $post->post_excerpt );
 	}
 
+	/**
+	 * @ticket 27550
+	 */
+	function test_wp_trash_untrash() {
+		$post = array(
+			'post_title'   => $this->slash_1,
+			'post_content' => $this->slash_3,
+			'post_excerpt' => $this->slash_5,
+		);
+		$id = wp_insert_post( wp_slash( $post ) );
+
+		$trashed = wp_trash_post( $id );
+		$this->assertNotEmpty( $trashed );
+
+		$post = get_post( $id );
+
+		$this->assertEquals( $this->slash_1, $post->post_title );
+		$this->assertEquals( $this->slash_3, $post->post_content );
+		$this->assertEquals( $this->slash_5, $post->post_excerpt );
+
+		$untrashed = wp_untrash_post( $id );
+		$this->assertNotEmpty( $untrashed );
+
+		$post = get_post( $id );
+
+		$this->assertEquals( $this->slash_1, $post->post_title );
+		$this->assertEquals( $this->slash_3, $post->post_content );
+		$this->assertEquals( $this->slash_5, $post->post_excerpt );
+	}
 }

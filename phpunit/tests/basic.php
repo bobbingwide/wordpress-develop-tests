@@ -5,32 +5,10 @@
  * @group testsuite
  */
 class Tests_Basic extends WP_UnitTestCase {
-	var $val;
-
-	function setUp() {
-		parent::setUp();
-		$this->val = true;
-	}
-
-	function tearDown() {
-		parent::tearDown();
-		$this->val = false;
-	}
-
-	function test_true() {
-		$this->assertTrue($this->val);
-	}
-
-	function test_readme() {
-		$readme = file_get_contents( ABSPATH . 'readme.html' );
-		preg_match( '#<br /> Version (.*)#', $readme, $matches );
-		list( $version ) = explode( '-', $GLOBALS['wp_version'] );
-		$this->assertEquals( $version, trim( $matches[1] ), "readme.html's version needs to be updated to $version." );
-	}
 
 	function test_license() {
 		$license = file_get_contents( ABSPATH . 'license.txt' );
-		preg_match( '#Copyright (\d+) by the contributors#', $license, $matches );
+		preg_match( '#Copyright 2011-(\d+) by the contributors#', $license, $matches );
 		$this_year = date( 'Y' );
 		$this->assertEquals( $this_year, trim( $matches[1] ), "license.txt's year needs to be updated to $this_year." );
 	}
@@ -113,13 +91,18 @@ EOF;
 		$this->assertEquals($expected, mask_input_value($in));
 	}
 
+	/**
+	 * @ticket 17884
+	 */
 	function test_setting_nonexistent_arrays() {
 		$page = 1;
 		$field = 'settings';
 
 		$empty_array[$page][$field] = 'foo';
 
+		// Assertion not strictly needed; we mainly want to show that a notice is not thrown.
 		unset( $empty_array[$page]['bar']['baz'] );
+		$this->assertFalse( isset( $empty_array[ $page ]['bar']['baz'] ) );
 	}
 
 	function test_magic_getter() {

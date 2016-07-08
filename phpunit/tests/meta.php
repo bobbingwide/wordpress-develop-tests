@@ -8,7 +8,7 @@ class Tests_Meta extends WP_UnitTestCase {
 
 	function setUp() {
 		parent::setUp();
-		$this->author = new WP_User( $this->factory->user->create( array( 'role' => 'author' ) ) );
+		$this->author = new WP_User( self::factory()->user->create( array( 'role' => 'author' ) ) );
 		$this->meta_id = add_metadata( 'user', $this->author->ID, 'meta_key', 'meta_value' );
 		$this->delete_meta_id = add_metadata( 'user', $this->author->ID, 'delete_meta_key', 'delete_meta_value' );
 	}
@@ -194,10 +194,10 @@ class Tests_Meta extends WP_UnitTestCase {
 	 * @ticket 16814
 	 */
 	function test_meta_type_cast() {
-		$post_id1 = $this->factory->post->create();
+		$post_id1 = self::factory()->post->create();
 		add_post_meta( $post_id1, 'num_as_longtext', 123 );
 		add_post_meta( $post_id1, 'num_as_longtext_desc', 10 );
-		$post_id2 = $this->factory->post->create();
+		$post_id2 = self::factory()->post->create();
 		add_post_meta( $post_id2, 'num_as_longtext', 99 );
 		add_post_meta( $post_id2, 'num_as_longtext_desc', 100 );
 
@@ -258,7 +258,7 @@ class Tests_Meta extends WP_UnitTestCase {
 	}
 
 	function test_meta_cache_order_asc() {
-		$post_id = $this->factory->post->create();
+		$post_id = self::factory()->post->create();
 		$colors = array( 'red', 'blue', 'yellow', 'green' );
 		foreach ( $colors as $color )
 			add_post_meta( $post_id, 'color', $color );
@@ -295,38 +295,41 @@ class Tests_Meta extends WP_UnitTestCase {
 	/**
 	 * @ticket 15030
 	 */
-	public function test_get_metadata_with_empty_key_array_value_should_be_unserialized() {
+	public function test_get_metadata_with_empty_key_array_value() {
 		$data = array( 1, 2 );
+		$value = serialize( $data );
 		add_metadata( 'user', $this->author->ID, 'foo', $data );
 		$found = get_metadata( 'user', $this->author->ID );
 
-		$this->assertSame( array( $data ), $found['foo'] );
+		$this->assertSame( array( $value ), $found['foo'] );
 	}
 
 	/**
 	 * @ticket 15030
 	 */
-	public function test_get_metadata_with_empty_key_object_value_should_be_unserialized() {
+	public function test_get_metadata_with_empty_key_object_value() {
 		$data = new stdClass;
 		$data->foo = 'bar';
+		$value = serialize( $data );
 		add_metadata( 'user', $this->author->ID, 'foo', $data );
 		$found = get_metadata( 'user', $this->author->ID );
 
-		$this->assertEquals( array( $data ), $found['foo'] );
+		$this->assertEquals( array( $value ), $found['foo'] );
 	}
 
 	/**
 	 * @ticket 15030
 	 */
-	public function test_get_metadata_with_empty_key_nested_array_value_should_be_unserialized() {
+	public function test_get_metadata_with_empty_key_nested_array_value() {
 		$data = array(
 			array( 1, 2 ),
 			array( 3, 4 ),
 		);
+		$value = serialize( $data );
 		add_metadata( 'user', $this->author->ID, 'foo', $data );
 		$found = get_metadata( 'user', $this->author->ID );
 
-		$this->assertSame( array( $data ), $found['foo'] );
+		$this->assertSame( array( $value ), $found['foo'] );
 	}
 
 	/** Helpers **********************************************************/

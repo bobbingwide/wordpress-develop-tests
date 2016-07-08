@@ -31,15 +31,22 @@ class Tests_Image_Editor_GD extends WP_Image_UnitTestCase {
 		parent::tearDown();
 	}
 
-	/**
-	 * Check support for GD compatible mime types.
-	 */
-	public function test_supports_mime_type() {
+	public function test_supports_mime_type_jpeg() {
 		$gd_image_editor = new WP_Image_Editor_GD( null );
+		$expected = imagetypes() & IMG_JPG;
+		$this->assertEquals( $expected, $gd_image_editor->supports_mime_type( 'image/jpeg' ) );
+	}
 
-		$this->assertTrue( $gd_image_editor->supports_mime_type( 'image/jpeg' ), 'Does not support image/jpeg' );
-		$this->assertTrue( $gd_image_editor->supports_mime_type( 'image/png' ), 'Does not support image/png' );
-		$this->assertTrue( $gd_image_editor->supports_mime_type( 'image/gif' ), 'Does not support image/gif' );
+	public function test_supports_mime_type_png() {
+		$gd_image_editor = new WP_Image_Editor_GD( null );
+		$expected = imagetypes() & IMG_PNG;
+		$this->assertEquals( $expected, $gd_image_editor->supports_mime_type( 'image/png' ) );
+	}
+
+	public function test_supports_mime_type_gif() {
+		$gd_image_editor = new WP_Image_Editor_GD( null );
+		$expected = imagetypes() & IMG_GIF;
+		$this->assertEquals( $expected, $gd_image_editor->supports_mime_type( 'image/gif' ) );
 	}
 
 	/**
@@ -282,9 +289,9 @@ class Tests_Image_Editor_GD extends WP_Image_UnitTestCase {
 
 			// #0
 			array(
-				'file'      => 'waffles-10x6.jpg',
+				'file'      => 'waffles-10x7.jpg',
 				'width'     => 10,
-				'height'    => 6,
+				'height'    => 7,
 				'mime-type' => 'image/jpeg',
 			),
 
@@ -322,16 +329,16 @@ class Tests_Image_Editor_GD extends WP_Image_UnitTestCase {
 
 			// #5
 			array(
-				'file'      => 'waffles-55x36.jpg',
+				'file'      => 'waffles-55x37.jpg',
 				'width'     => 55,
-				'height'    => 36,
+				'height'    => 37,
 				'mime-type' => 'image/jpeg',
 			),
 
 			// #6
 			array(
-				'file'      => 'waffles-82x55.jpg',
-				'width'     => 82,
+				'file'      => 'waffles-83x55.jpg',
+				'width'     => 83,
 				'height'    => 55,
 				'mime-type' => 'image/jpeg',
 			),
@@ -460,6 +467,10 @@ class Tests_Image_Editor_GD extends WP_Image_UnitTestCase {
 	 * @ticket 23039
 	 */
 	public function test_image_preserves_alpha_on_resize() {
+		if ( ! ( imagetypes() & IMG_PNG ) ) {
+			$this->markTestSkipped( 'This test requires PHP to be compiled with PNG support.' );
+		}
+
 		$file = DIR_TESTDATA . '/images/transparent.png';
 
 		$editor = wp_get_image_editor( $file );
@@ -472,7 +483,7 @@ class Tests_Image_Editor_GD extends WP_Image_UnitTestCase {
 
 		$editor->save( $save_to_file );
 
-		$this->assertImageAlphaAtPoint( $save_to_file, array( 0,0 ), 127 );
+		$this->assertImageAlphaAtPointGD( $save_to_file, array( 0,0 ), 127 );
 
 		unlink( $save_to_file );
 	}
@@ -483,6 +494,10 @@ class Tests_Image_Editor_GD extends WP_Image_UnitTestCase {
 	 * @ticket 23039
 	 */
 	public function test_image_preserves_alpha() {
+		if ( ! ( imagetypes() & IMG_PNG ) ) {
+			$this->markTestSkipped( 'This test requires PHP to be compiled with PNG support.' );
+		}
+
 		$file = DIR_TESTDATA . '/images/transparent.png';
 
 		$editor = wp_get_image_editor( $file );
@@ -495,8 +510,36 @@ class Tests_Image_Editor_GD extends WP_Image_UnitTestCase {
 
 		$editor->save( $save_to_file );
 
-		$this->assertImageAlphaAtPoint( $save_to_file, array( 0,0 ), 127 );
+		$this->assertImageAlphaAtPointGD( $save_to_file, array( 0,0 ), 127 );
 
 		unlink( $save_to_file );
+	}
+
+	/**
+	 *
+	 * @ticket 30596
+	 */
+	public function test_image_preserves_alpha_on_rotate() {
+		if ( ! ( imagetypes() & IMG_PNG ) ) {
+			$this->markTestSkipped( 'This test requires PHP to be compiled with PNG support.' );
+		}
+
+		$file = DIR_TESTDATA . '/images/transparent.png';
+
+		$image = imagecreatefrompng( $file );
+		$rgb = imagecolorat( $image, 0, 0 );
+		$expected = imagecolorsforindex( $image, $rgb );
+
+		$editor = new WP_Image_Editor_GD( $file );
+                $this->assertNotInstanceOf( 'WP_Error', $editor );
+                $editor->load();
+                $editor->rotate( 180 );
+                $save_to_file = tempnam( get_temp_dir(), '' ) . '.png';
+
+                $editor->save( $save_to_file );
+
+                $this->assertImageAlphaAtPointGD( $save_to_file, array( 0,0 ), $expected['alpha'] );
+                unlink( $save_to_file );
+
 	}
 }

@@ -19,8 +19,6 @@ class Tests_Multisite_MS_Files_Rewriting extends WP_UnitTestCase {
 		parent::setUp();
 		$this->suppress = $wpdb->suppress_errors();
 
-		$_SERVER[ 'REMOTE_ADDR' ] = '';
-
 		update_site_option( 'ms_files_rewriting', 1 );
 		ms_upload_constants();
 	}
@@ -29,8 +27,9 @@ class Tests_Multisite_MS_Files_Rewriting extends WP_UnitTestCase {
 		global $wpdb;
 
 		update_site_option( 'ms_files_rewriting', 0 );
-		parent::tearDown();
 		$wpdb->suppress_errors( $this->suppress );
+
+		parent::tearDown();
 	}
 
 	function test_switch_upload_dir() {
@@ -38,8 +37,8 @@ class Tests_Multisite_MS_Files_Rewriting extends WP_UnitTestCase {
 
 		$site = get_current_site();
 
-		$user_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
-		$blog_id2 = $this->factory->blog->create( array( 'user_id' => $user_id ) );
+		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		$blog_id2 = self::factory()->blog->create( array( 'user_id' => $user_id ) );
 		$info = wp_upload_dir();
 		$this->assertEquals( 'http://' . $site->domain . '/wp-content/uploads/' . gmstrftime('%Y/%m'), $info['url'] );
 		$this->assertEquals( ABSPATH . 'wp-content/uploads/' . gmstrftime('%Y/%m'), $info['path'] );
@@ -68,7 +67,7 @@ class Tests_Multisite_MS_Files_Rewriting extends WP_UnitTestCase {
 		// Upload a file to the main site on the network.
 		$file1 = wp_upload_bits( $filename, null, $contents );
 
-		$blog_id = $this->factory->blog->create();
+		$blog_id = self::factory()->blog->create();
 
 		switch_to_blog( $blog_id );
 		$file2 = wp_upload_bits( $filename, null, $contents );

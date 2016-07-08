@@ -9,31 +9,13 @@ if ( is_multisite() ) :
  * @group multisite
  */
 class Tests_Multisite_Bootstrap extends WP_UnitTestCase {
-	protected $suppress = false;
+	protected static $network_ids;
+	protected static $site_ids;
 
-	function setUp() {
-		global $wpdb;
-		parent::setUp();
-		$this->suppress = $wpdb->suppress_errors();
-
-		$_SERVER[ 'REMOTE_ADDR' ] = '';
-	}
-
-	function tearDown() {
-		global $wpdb;
-		parent::tearDown();
-		$wpdb->suppress_errors( $this->suppress );
-	}
-
-
-	/**
-	 * @ticket 27003
-	 */
-	function test_get_network_by_path() {
-		global $wpdb;
-
-		$ids = array(
+	public static function wpSetUpBeforeClass( $factory ) {
+		self::$network_ids = array(
 			'wordpress.org/'         => array( 'domain' => 'wordpress.org', 'path' => '/' ),
+			'make.wordpress.org/'    => array( 'domain' => 'make.wordpress.org', 'path' => '/' ),
 			'wordpress.org/one/'     => array( 'domain' => 'wordpress.org', 'path' => '/one/' ),
 			'wordpress.net/'         => array( 'domain' => 'wordpress.net', 'path' => '/' ),
 			'www.wordpress.net/'     => array( 'domain' => 'www.wordpress.net', 'path' => '/' ),
@@ -41,232 +23,193 @@ class Tests_Multisite_Bootstrap extends WP_UnitTestCase {
 			'wordpress.net/three/'   => array( 'domain' => 'wordpress.net', 'path' => '/three/' ),
 		);
 
-		foreach ( $ids as &$id ) {
-			$id = $this->factory->network->create( $id );
+		foreach ( self::$network_ids as &$id ) {
+			$id = $factory->network->create( $id );
 		}
 		unset( $id );
 
-		$this->assertEquals( $ids['www.wordpress.net/'],
-			get_network_by_path( 'www.wordpress.net', '/notapath/' )->id );
-
-		$this->assertEquals( $ids['www.wordpress.net/two/'],
-			get_network_by_path( 'www.wordpress.net', '/two/' )->id );
-
-		// This should find /one/ despite the www.
-		$this->assertEquals( $ids['wordpress.org/one/'],
-			get_network_by_path( 'www.wordpress.org', '/one/' )->id );
-
-		// This should not find /one/ because the domains don't match.
-		$this->assertEquals( $ids['wordpress.org/'],
-			get_network_by_path( 'site1.wordpress.org', '/one/' )->id );
-
-		$this->assertEquals( $ids['wordpress.net/three/'],
-			get_network_by_path( 'wordpress.net', '/three/' )->id );
-
-		$this->assertEquals( $ids['wordpress.net/'],
-			get_network_by_path( 'wordpress.net', '/notapath/' )->id );
-
-		$this->assertEquals( $ids['wordpress.net/'],
-			get_network_by_path( 'site1.wordpress.net', '/notapath/' )->id );
-
-		$this->assertEquals( $ids['wordpress.net/'],
-			get_network_by_path( 'site1.wordpress.net', '/three/' )->id );
-	}
-
-	/**
-	 * @ticket 27003
-	 * @ticket 27927
-	 */
-	function test_get_site_by_path() {
-		$ids = array(
-			'wordpress.org/'              => array( 'domain' => 'wordpress.org',      'path' => '/' ),
-			'wordpress.org/foo/'          => array( 'domain' => 'wordpress.org',      'path' => '/foo/' ),
-			'wordpress.org/foo/bar/'      => array( 'domain' => 'wordpress.org',      'path' => '/foo/bar/' ),
-			'make.wordpress.org/'         => array( 'domain' => 'make.wordpress.org', 'path' => '/' ),
-			'make.wordpress.org/foo/'     => array( 'domain' => 'make.wordpress.org', 'path' => '/foo/' ),
+		self::$site_ids = array(
+			'wordpress.org/'              => array( 'domain' => 'wordpress.org',      'path' => '/',         'site_id' => self::$network_ids['wordpress.org/'] ),
+			'wordpress.org/foo/'          => array( 'domain' => 'wordpress.org',      'path' => '/foo/',     'site_id' => self::$network_ids['wordpress.org/'] ),
+			'wordpress.org/foo/bar/'      => array( 'domain' => 'wordpress.org',      'path' => '/foo/bar/', 'site_id' => self::$network_ids['wordpress.org/'] ),
+			'make.wordpress.org/'         => array( 'domain' => 'make.wordpress.org', 'path' => '/',         'site_id' => self::$network_ids['make.wordpress.org/'] ),
+			'make.wordpress.org/foo/'     => array( 'domain' => 'make.wordpress.org', 'path' => '/foo/',     'site_id' => self::$network_ids['make.wordpress.org/'] ),
 			'www.w.org/'                  => array( 'domain' => 'www.w.org',          'path' => '/' ),
 			'www.w.org/foo/'              => array( 'domain' => 'www.w.org',          'path' => '/foo/' ),
 			'www.w.org/foo/bar/'          => array( 'domain' => 'www.w.org',          'path' => '/foo/bar/' ),
 		);
 
-		foreach ( $ids as &$id ) {
-			$id = $this->factory->blog->create( $id );
+		foreach ( self::$site_ids as &$id ) {
+			$id = $factory->blog->create( $id );
 		}
 		unset( $id );
+	}
 
-		$this->assertEquals( $ids['wordpress.org/'],
-			get_site_by_path( 'wordpress.org', '/notapath/' )->blog_id );
+	public static function wpTearDownAfterClass() {
+		global $wpdb;
 
-		$this->assertEquals( $ids['wordpress.org/'],
-			get_site_by_path( 'www.wordpress.org', '/notapath/' )->blog_id );
+		foreach( self::$site_ids as $id ) {
+			wpmu_delete_blog( $id, true );
+		}
 
-		$this->assertEquals( $ids['wordpress.org/foo/bar/'],
-			get_site_by_path( 'wordpress.org', '/foo/bar/baz/' )->blog_id );
+		foreach( self::$network_ids as $id ) {
+			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->sitemeta} WHERE site_id = %d", $id ) );
+			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->site} WHERE id= %d", $id ) );
+		}
 
-		$this->assertEquals( $ids['wordpress.org/foo/bar/'],
-			get_site_by_path( 'www.wordpress.org', '/foo/bar/baz/' )->blog_id );
+		wp_update_network_site_counts();
+	}
 
-		$this->assertEquals( $ids['wordpress.org/foo/bar/'],
-			get_site_by_path( 'wordpress.org', '/foo/bar/baz/', 3 )->blog_id );
+	/**
+	 * @ticket 27003
+	 * @dataProvider data_get_network_by_path
+	 *
+	 * @param string $expected_key The array key associated with expected data for the test.
+	 * @param string $domain       The requested domain.
+	 * @param string $path         The requested path.
+	 * @param string $message      The message to pass for failed tests.
+	 */
+	function test_get_network_by_path( $expected_key, $domain, $path, $message ) {
+		$network = get_network_by_path( $domain, $path );
+		$this->assertEquals( self::$network_ids[ $expected_key ], $network->id, $message );
+	}
 
-		$this->assertEquals( $ids['wordpress.org/foo/bar/'],
-			get_site_by_path( 'www.wordpress.org', '/foo/bar/baz/', 3 )->blog_id );
+	public function data_get_network_by_path() {
+		return array(
+			array( 'wordpress.org/',         'wordpress.org',       '/',          'A standard domain and path request should work.' ),
+			array( 'wordpress.net/',         'wordpress.net',       '/notapath/', 'A missing path on a top level domain should find the correct network.' ),
+			array( 'www.wordpress.net/',     'www.wordpress.net',   '/notapath/', 'A missing path should find the correct network.' ),
+			array( 'wordpress.org/one/',     'www.wordpress.org',   '/one/',      'Should find the path despite the www.' ),
+			array( 'wordpress.org/',         'site1.wordpress.org', '/one/',      'Should not find path because domains do not match.' ),
+			array( 'wordpress.net/three/',   'wordpress.net',       '/three/',    'A network can have a path.' ),
+			array( 'www.wordpress.net/two/', 'www.wordpress.net',   '/two/',      'A www network with a path can coexist with a non-www network.' ),
+			array( 'wordpress.net/',         'site1.wordpress.net', '/notapath/', 'An invalid subdomain should find the top level network domain.' ),
+			array( 'wordpress.net/',         'site1.wordpress.net', '/three/',    'An invalid subdomain and path should find the top level network domain.' ),
+		);
+	}
 
-		$this->assertEquals( $ids['wordpress.org/foo/bar/'],
-			get_site_by_path( 'wordpress.org', '/foo/bar/baz/', 2 )->blog_id );
+	/**
+	 * @ticket 27003
+	 * @ticket 27927
+	 * @dataProvider data_get_site_by_path
+	 *
+	 * @param string $expected_key The array key associated with expected data for the test.
+	 * @param string $domain       The requested domain.
+	 * @param string $path         The requested path.
+	 * @param int    $segments     Optional. Number of segments to use in `get_site_by_path()`.
+	 */
+	public function test_get_site_by_path( $expected_key, $domain, $path, $segments = null ) {
+		$site = get_site_by_path( $domain, $path, $segments );
 
-		$this->assertEquals( $ids['wordpress.org/foo/bar/'],
-			get_site_by_path( 'www.wordpress.org', '/foo/bar/baz/', 2 )->blog_id );
+		if ( $expected_key ) {
+			$this->assertEquals( self::$site_ids[ $expected_key ], $site->blog_id );
+		} else {
+			$this->assertFalse( $site );
+		}
+	}
 
-		$this->assertEquals( $ids['wordpress.org/foo/'],
-			get_site_by_path( 'wordpress.org', '/foo/bar/baz/', 1 )->blog_id );
+	public function data_get_site_by_path() {
+		return array(
+			array( 'wordpress.org/',          'wordpress.org',          '/notapath/' ),
+			array( 'wordpress.org/',          'www.wordpress.org',      '/notapath/' ),
+			array( 'wordpress.org/foo/bar/',  'wordpress.org',          '/foo/bar/baz/' ),
+			array( 'wordpress.org/foo/bar/',  'www.wordpress.org',      '/foo/bar/baz/' ),
+			array( 'wordpress.org/foo/bar/',  'wordpress.org',          '/foo/bar/baz/',     3 ),
+			array( 'wordpress.org/foo/bar/',  'www.wordpress.org',      '/foo/bar/baz/',     3 ),
+			array( 'wordpress.org/foo/bar/',  'wordpress.org',          '/foo/bar/baz/',     2 ),
+			array( 'wordpress.org/foo/bar/',  'www.wordpress.org',      '/foo/bar/baz/',     2 ),
+			array( 'wordpress.org/foo/',      'wordpress.org',          '/foo/bar/baz/',     1 ),
+			array( 'wordpress.org/foo/',      'www.wordpress.org',      '/foo/bar/baz/',     1 ),
+			array( 'wordpress.org/',          'wordpress.org',          '/',                 0 ),
+			array( 'wordpress.org/',          'www.wordpress.org',      '/',                 0 ),
+			array( 'make.wordpress.org/foo/', 'make.wordpress.org',     '/foo/bar/baz/quz/', 4 ),
+			array( 'make.wordpress.org/foo/', 'www.make.wordpress.org', '/foo/bar/baz/quz/', 4 ),
+			array( 'www.w.org/',              'www.w.org',              '/',                 0 ),
+			array( 'www.w.org/',              'www.w.org',              '/notapath' ),
+			array( 'www.w.org/foo/bar/',      'www.w.org',              '/foo/bar/baz/' ),
+			array( 'www.w.org/foo/',          'www.w.org',              '/foo/bar/baz/',     1 ),
 
-		$this->assertEquals( $ids['wordpress.org/foo/'],
-			get_site_by_path( 'www.wordpress.org', '/foo/bar/baz/', 1 )->blog_id );
+			// A site installed with www will not be found by the root domain.
+			array( false, 'w.org', '/' ),
+			array( false, 'w.org', '/notapath/' ),
+			array( false, 'w.org', '/foo/bar/baz/' ),
+			array( false, 'w.org', '/foo/bar/baz/', 1 ),
 
-		$this->assertEquals( $ids['wordpress.org/'],
-			get_site_by_path( 'wordpress.org', '/', 0 )->blog_id );
+			// A site will not be found by its root domain when an invalid subdomain is requested.
+			array( false, 'invalid.wordpress.org', '/' ),
+			array( false, 'invalid.wordpress.org', '/foo/bar/' ),
+		);
+	}
 
-		$this->assertEquals( $ids['wordpress.org/'],
-			get_site_by_path( 'www.wordpress.org', '/', 0 )->blog_id );
+	/**
+	 * @ticket 27884
+	 * @dataProvider data_multisite_bootstrap
+	 *
+	 * @param string $site_key    The array key associated with the expected site for the test.
+	 * @param string $network_key The array key associated with the expected network for the test.
+	 * @param string $domain      The requested domain.
+	 * @param string $path        The requested path.
+	 */
+	function test_multisite_bootstrap( $site_key, $network_key, $domain, $path ) {
+		global $current_blog;
 
-		$this->assertEquals( $ids['make.wordpress.org/foo/'],
-			get_site_by_path( 'make.wordpress.org', '/foo/bar/baz/qux/', 4 )->blog_id );
+		$expected = array(
+			'network_id' => self::$network_ids[ $network_key ],
+			'site_id' => self::$site_ids[ $site_key ],
+		);
 
-		$this->assertEquals( $ids['make.wordpress.org/foo/'],
-			get_site_by_path( 'www.make.wordpress.org', '/foo/bar/baz/qux/', 4 )->blog_id );
+		ms_load_current_site_and_network( $domain, $path );
+		$actual = array(
+			'network_id' => $current_blog->site_id,
+			'site_id' => $current_blog->blog_id,
+		);
+		ms_load_current_site_and_network( WP_TESTS_DOMAIN, '/' );
 
-		$this->assertEquals( $ids['www.w.org/'],
-			get_site_by_path( 'www.w.org', '/', 0 )->blog_id );
+		$this->assertEqualSetsWithIndex( $expected, $actual );
+	}
 
-		$this->assertEquals( $ids['www.w.org/'],
-			get_site_by_path( 'www.w.org', '/notapath/' )->blog_id );
-
-		$this->assertEquals( $ids['www.w.org/foo/bar/'],
-			get_site_by_path( 'www.w.org', '/foo/bar/baz/' )->blog_id );
-
-		$this->assertEquals( $ids['www.w.org/foo/'],
-			get_site_by_path( 'www.w.org', '/foo/bar/baz/', 1 )->blog_id );
-
-		// A site installed with www will not be found by the root domain.
-		$this->assertFalse( get_site_by_path( 'w.org', '/' ) );
-		$this->assertFalse( get_site_by_path( 'w.org', '/notapath/' ) );
-		$this->assertFalse( get_site_by_path( 'w.org', '/foo/bar/baz/' ) );
-		$this->assertFalse( get_site_by_path( 'w.org', '/foo/bar/baz/', 1 ) );
-
-		// A site will not be found by its root domain when an invalid subdomain is requested.
-		$this->assertFalse( get_site_by_path( 'invalid.wordpress.org', '/' ) );
-		$this->assertFalse( get_site_by_path( 'invalid.wordpress.org', '/foo/bar/' ) );
+	public function data_multisite_bootstrap() {
+		return array(
+			array( 'wordpress.org/',          'wordpress.org/',      'wordpress.org',      '/' ),
+			array( 'wordpress.org/',          'wordpress.org/',      'wordpress.org',      '/2014/04/23/hello-world/' ),
+			array( 'wordpress.org/',          'wordpress.org/',      'wordpress.org',      '/sample-page/' ),
+			array( 'wordpress.org/',          'wordpress.org/',      'wordpress.org',      '/?p=1' ),
+			array( 'wordpress.org/',          'wordpress.org/',      'wordpress.org',      '/wp-admin/' ),
+			array( 'wordpress.org/foo/',      'wordpress.org/',      'wordpress.org',      '/foo/' ),
+			array( 'wordpress.org/foo/',      'wordpress.org/',      'wordpress.org',      '/FOO/' ),
+			array( 'wordpress.org/foo/',      'wordpress.org/',      'wordpress.org',      '/foo/2014/04/23/hello-world/' ),
+			array( 'wordpress.org/foo/',      'wordpress.org/',      'wordpress.org',      '/foo/sample-page/' ),
+			array( 'wordpress.org/foo/',      'wordpress.org/',      'wordpress.org',      '/foo/?p=1' ),
+			array( 'wordpress.org/foo/',      'wordpress.org/',      'wordpress.org',      '/foo/wp-admin/' ),
+			array( 'make.wordpress.org/',     'make.wordpress.org/', 'make.wordpress.org', '/' ),
+			array( 'make.wordpress.org/foo/', 'make.wordpress.org/', 'make.wordpress.org', '/foo/' ),
+		);
 	}
 
 	/**
 	 * @ticket 27884
 	 */
-	function test_multisite_bootstrap() {
+	public function test_multisite_bootstrap_additional_path_segments() {
 		global $current_blog;
 
-		$network_ids = array(
-			'wordpress.org/'         => array( 'domain' => 'wordpress.org', 'path' => '/' ),
-			'make.wordpress.org/'    => array( 'domain' => 'make.wordpress.org', 'path' => '/' ),
+		$expected = array(
+			'network_id' => self::$network_ids['wordpress.org/'],
+			'site_id'    => self::$site_ids['wordpress.org/foo/bar/'],
 		);
-
-		foreach ( $network_ids as &$id ) {
-			$id = $this->factory->network->create( $id );
-		}
-		unset( $id );
-
-		$ids = array(
-			'wordpress.org/'              => array( 'domain' => 'wordpress.org',      'path' => '/',         'site_id' => $network_ids['wordpress.org/'] ),
-			'wordpress.org/foo/'          => array( 'domain' => 'wordpress.org',      'path' => '/foo/',     'site_id' => $network_ids['wordpress.org/'] ),
-			'wordpress.org/foo/bar/'      => array( 'domain' => 'wordpress.org',      'path' => '/foo/bar/', 'site_id' => $network_ids['wordpress.org/'] ),
-			'make.wordpress.org/'         => array( 'domain' => 'make.wordpress.org', 'path' => '/',         'site_id' => $network_ids['make.wordpress.org/'] ),
-			'make.wordpress.org/foo/'     => array( 'domain' => 'make.wordpress.org', 'path' => '/foo/',     'site_id' => $network_ids['make.wordpress.org/'] ),
+		add_filter( 'site_by_path_segments_count', array( $this, 'filter_path_segments_to_two' ) );
+		ms_load_current_site_and_network( 'wordpress.org', '/foo/bar/' );
+		$actual = array(
+			'network_id' => $current_blog->site_id,
+			'site_id' => $current_blog->blog_id,
 		);
+		remove_filter( 'site_by_path_segments_count', array( $this, 'filter_path_segments_to_two' ) );
+		ms_load_current_site_and_network( WP_TESTS_DOMAIN, '/' );
 
-		foreach ( $ids as &$id ) {
-			$id = $this->factory->blog->create( $id );
-		}
-		unset( $id );
-
-		$this->_setup_host_request( 'wordpress.org', '/' );
-		$this->assertEquals( $ids['wordpress.org/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/2014/04/23/hello-world/' );
-		$this->assertEquals( $ids['wordpress.org/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/sample-page/' );
-		$this->assertEquals( $ids['wordpress.org/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/?p=1' );
-		$this->assertEquals( $ids['wordpress.org/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/wp-admin/' );
-		$this->assertEquals( $ids['wordpress.org/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/foo/' );
-		$this->assertEquals( $ids['wordpress.org/foo/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/FOO/' );
-		$this->assertEquals( $ids['wordpress.org/foo/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/foo/2014/04/23/hello-world/' );
-		$this->assertEquals( $ids['wordpress.org/foo/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/foo/sample-page/' );
-		$this->assertEquals( $ids['wordpress.org/foo/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/foo/?p=1' );
-		$this->assertEquals( $ids['wordpress.org/foo/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'wordpress.org', '/foo/wp-admin/' );
-		$this->assertEquals( $ids['wordpress.org/foo/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		// @todo not currently passing.
-		//$this->_setup_host_request( 'wordpress.org', '/foo/bar/' );
-		//$this->assertEquals( $ids['wordpress.org/foo/bar/'], $current_blog->blog_id );
-		//$this->assertEquals( $network_ids['wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'make.wordpress.org', '/' );
-		$this->assertEquals( $ids['make.wordpress.org/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['make.wordpress.org/'], $current_blog->site_id );
-
-		$this->_setup_host_request( 'make.wordpress.org', '/foo/' );
-		$this->assertEquals( $ids['make.wordpress.org/foo/'], $current_blog->blog_id );
-		$this->assertEquals( $network_ids['make.wordpress.org/'], $current_blog->site_id );
-
-		// Request the original tests domain and path to unpollute the stack.
-		$this->_setup_host_request( WP_TESTS_DOMAIN, '/' );
+		$this->assertEqualSetsWithIndex( $expected, $actual );
 	}
 
-	/**
-	 * Reset various globals required for a 'clean' multisite boot.
-	 *
-	 * The $wpdb and $table_prefix globals are required for ms-settings.php to
-	 * load properly.
-	 *
-	 * @param string $domain HTTP_HOST of the bootstrap request.
-	 * @param string $path   REQUEST_URI of the boot strap request.
-	 */
-	function _setup_host_request( $domain, $path ) {
-		global $current_site, $current_blog, $table_prefix, $wpdb;
-
-		$table_prefix = WP_TESTS_TABLE_PREFIX;
-		$current_site = $current_blog = null;
-		$_SERVER['HTTP_HOST'] = $domain;
-		$_SERVER['REQUEST_URI'] = $path;
-
-		include ABSPATH . '/wp-includes/ms-settings.php';
+	public function filter_path_segments_to_two() {
+		return 2;
 	}
 }
 

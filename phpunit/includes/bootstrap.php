@@ -22,9 +22,14 @@ if ( !is_readable( $config_file_path ) ) {
 	die( "ERROR: wp-tests-config.php is missing! Please use wp-tests-config-sample.php to create a config file.\n" );
 }
 require_once $config_file_path;
+require_once dirname( __FILE__ ) . '/functions.php';
+
+tests_reset__SERVER();
 
 define( 'WP_TESTS_TABLE_PREFIX', $table_prefix );
 define( 'DIR_TESTDATA', dirname( __FILE__ ) . '/../data' );
+
+define( 'WP_LANG_DIR', DIR_TESTDATA . '/languages' );
 
 if ( ! defined( 'WP_TESTS_FORCE_KNOWN_BUGS' ) )
 	define( 'WP_TESTS_FORCE_KNOWN_BUGS', false );
@@ -35,16 +40,12 @@ define( 'DISABLE_WP_CRON', true );
 define( 'WP_MEMORY_LIMIT', -1 );
 define( 'WP_MAX_MEMORY_LIMIT', -1 );
 
-$_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
-$_SERVER['HTTP_HOST'] = WP_TESTS_DOMAIN;
 $PHP_SELF = $GLOBALS['PHP_SELF'] = $_SERVER['PHP_SELF'] = '/index.php';
 
-if ( "1" == getenv( 'WP_MULTISITE' ) ||
-	( defined( 'WP_TESTS_MULTISITE') && WP_TESTS_MULTISITE ) ) {
-	$multisite = true;
-} else {
-	$multisite = false;
-}
+// Should we run in multisite mode?
+$multisite = '1' == getenv( 'WP_MULTISITE' );
+$multisite = $multisite || ( defined( 'WP_TESTS_MULTISITE') && WP_TESTS_MULTISITE );
+$multisite = $multisite || ( defined( 'MULTISITE' ) && MULTISITE );
 
 // Override the PHPMailer
 require_once( dirname( __FILE__ ) . '/mock-mailer.php' );
@@ -54,15 +55,13 @@ system( WP_PHP_BINARY . ' ' . escapeshellarg( dirname( __FILE__ ) . '/install.ph
 
 if ( $multisite ) {
 	echo "Running as multisite..." . PHP_EOL;
-	define( 'MULTISITE', true );
-	define( 'SUBDOMAIN_INSTALL', false );
+	defined( 'MULTISITE' ) or define( 'MULTISITE', true );
+	defined( 'SUBDOMAIN_INSTALL' ) or define( 'SUBDOMAIN_INSTALL', false );
 	$GLOBALS['base'] = '/';
 } else {
 	echo "Running as single site... To run multisite, use -c tests/phpunit/multisite.xml" . PHP_EOL;
 }
 unset( $multisite );
-
-require_once dirname( __FILE__ ) . '/functions.php';
 
 $GLOBALS['_wp_die_disabled'] = false;
 // Allow tests to override wp_die
@@ -88,11 +87,13 @@ require_once ABSPATH . '/wp-settings.php';
 _delete_all_posts();
 
 require dirname( __FILE__ ) . '/testcase.php';
+require dirname( __FILE__ ) . '/testcase-rest-api.php';
 require dirname( __FILE__ ) . '/testcase-xmlrpc.php';
 require dirname( __FILE__ ) . '/testcase-ajax.php';
 require dirname( __FILE__ ) . '/testcase-canonical.php';
 require dirname( __FILE__ ) . '/exceptions.php';
 require dirname( __FILE__ ) . '/utils.php';
+require dirname( __FILE__ ) . '/spy-rest-server.php';
 
 /**
  * A child class of the PHP test runner.
@@ -161,6 +162,13 @@ class WP_PHPUnit_Util_Getopt extends PHPUnit_Util_Getopt {
 		$skipped_groups = array_filter( $skipped_groups );
 		foreach ( $skipped_groups as $group_name => $skipped ) {
 			echo sprintf( 'Not running %1$s tests. To execute these, use --group %1$s.', $group_name ) . PHP_EOL;
+		}
+
+		if ( ! isset( $skipped_groups['external-http'] ) ) {
+			echo PHP_EOL;
+			echo 'External HTTP skipped tests can be caused by timeouts.' . PHP_EOL;
+			echo 'If this changeset includes changes to HTTP, make sure there are no timeouts.' . PHP_EOL;
+			echo PHP_EOL;
 		}
     }
 }

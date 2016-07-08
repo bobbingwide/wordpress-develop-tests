@@ -22,9 +22,7 @@ class Tests_Query_Results extends WP_UnitTestCase {
 	static $child_three;
 	static $child_four;
 
-	public static function setUpBeforeClass() {
-		$factory = new WP_UnitTest_Factory;
-
+	public static function wpSetUpBeforeClass( $factory ) {
 		self::$cat_ids[] = $cat_a = $factory->term->create( array( 'taxonomy' => 'category', 'name' => 'cat-a' ) );
 		self::$cat_ids[] = $cat_b = $factory->term->create( array( 'taxonomy' => 'category', 'name' => 'cat-b' ) );
 		self::$cat_ids[] = $cat_c = $factory->term->create( array( 'taxonomy' => 'category', 'name' => 'cat-c' ) );
@@ -67,11 +65,9 @@ class Tests_Query_Results extends WP_UnitTestCase {
 		self::$post_ids[] = self::$child_two = $factory->post->create( array( 'post_title' => 'child-two', 'post_parent' => self::$parent_one, 'post_date' => '2007-01-01 00:00:02' ) );
 		self::$post_ids[] = self::$child_three = $factory->post->create( array( 'post_title' => 'child-three', 'post_parent' => self::$parent_two, 'post_date' => '2007-01-01 00:00:03' ) );
 		self::$post_ids[] = self::$child_four = $factory->post->create( array( 'post_title' => 'child-four', 'post_parent' => self::$parent_two, 'post_date' => '2007-01-01 00:00:04' ) );
-
-		self::commit_transaction();
 	}
 
-	public static function tearDownAfterClass() {
+	public static function wpTearDownAfterClass() {
 		foreach ( self::$cat_ids as $cat_id ) {
 			wp_delete_term( $cat_id, 'category' );
 		}
@@ -83,8 +79,6 @@ class Tests_Query_Results extends WP_UnitTestCase {
 		foreach ( self::$post_ids as $post_id ) {
 			wp_delete_post( $post_id, true );
 		}
-
-		self::commit_transaction();
 	}
 
 	function setUp() {
@@ -318,30 +312,6 @@ class Tests_Query_Results extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @ticket 18897
-	 */
-	function test_query_offset_and_paged() {
-		$posts = $this->q->query('paged=2&offset=3');
-
-		$expected = array (
-			0 => 'many-trackbacks',
-			1 => 'one-trackback',
-			2 => 'comment-test',
-			3 => 'lorem-ipsum',
-			4 => 'cat-c',
-			5 => 'cat-b',
-			6 => 'cat-a',
-			7 => 'cats-a-and-c',
-			8 => 'cats-b-and-c',
-			9 => 'cats-a-and-b',
-		);
-
-		$this->assertCount( 10, $posts );
-		$this->assertTrue( $this->q->is_paged() );
-		$this->assertEquals( $expected, wp_list_pluck( $posts, 'post_name' ) );
-	}
-
-	/**
 	 * @ticket 11056
 	 */
 	function test_query_post_parent__in() {
@@ -411,6 +381,7 @@ class Tests_Query_Results extends WP_UnitTestCase {
 
 	/**
 	 * @ticket 27252
+	 * @ticket 31194
 	 */
 	function test_query_fields_integers() {
 
@@ -425,6 +396,7 @@ class Tests_Query_Results extends WP_UnitTestCase {
 		) );
 
 		$this->assertSame( $parents, $posts1 );
+		$this->assertSame( $parents, $this->q->posts );
 
 		$children = array(
 			(int) self::$child_one => (int) self::$parent_one,
@@ -438,6 +410,11 @@ class Tests_Query_Results extends WP_UnitTestCase {
 		) );
 
 		$this->assertSame( $children, $posts2 );
+
+		foreach ( $this->q->posts as $post ) {
+			$this->assertInternalType( 'int', $post->ID );
+			$this->assertInternalType( 'int', $post->post_parent );
+		}
 
 	}
 
@@ -479,17 +456,17 @@ class Tests_Query_Results extends WP_UnitTestCase {
 	 * @ticket 16854
 	 */
 	function test_query_author_vars() {
-		$author_1 = $this->factory->user->create( array( 'user_login' => 'admin1', 'user_pass' => rand_str(), 'role' => 'author' ) );
-		$post_1 = $this->factory->post->create( array( 'post_title' => rand_str(), 'post_author' => $author_1, 'post_date' => '2007-01-01 00:00:00' ) );
+		$author_1 = self::factory()->user->create( array( 'user_login' => 'admin1', 'user_pass' => rand_str(), 'role' => 'author' ) );
+		$post_1 = self::factory()->post->create( array( 'post_title' => rand_str(), 'post_author' => $author_1, 'post_date' => '2007-01-01 00:00:00' ) );
 
-		$author_2 = $this->factory->user->create( array( 'user_login' => rand_str(), 'user_pass' => rand_str(), 'role' => 'author' ) );
-		$post_2 = $this->factory->post->create( array( 'post_title' => rand_str(), 'post_author' => $author_2, 'post_date' => '2007-01-01 00:00:00' ) );
+		$author_2 = self::factory()->user->create( array( 'user_login' => rand_str(), 'user_pass' => rand_str(), 'role' => 'author' ) );
+		$post_2 = self::factory()->post->create( array( 'post_title' => rand_str(), 'post_author' => $author_2, 'post_date' => '2007-01-01 00:00:00' ) );
 
-		$author_3 = $this->factory->user->create( array( 'user_login' => rand_str(), 'user_pass' => rand_str(), 'role' => 'author' ) );
-		$post_3 = $this->factory->post->create( array( 'post_title' => rand_str(), 'post_author' => $author_3, 'post_date' => '2007-01-01 00:00:00' ) );
+		$author_3 = self::factory()->user->create( array( 'user_login' => rand_str(), 'user_pass' => rand_str(), 'role' => 'author' ) );
+		$post_3 = self::factory()->post->create( array( 'post_title' => rand_str(), 'post_author' => $author_3, 'post_date' => '2007-01-01 00:00:00' ) );
 
-		$author_4 = $this->factory->user->create( array( 'user_login' => rand_str(), 'user_pass' => rand_str(), 'role' => 'author' ) );
-		$post_4 = $this->factory->post->create( array( 'post_title' => rand_str(), 'post_author' => $author_4, 'post_date' => '2007-01-01 00:00:00' ) );
+		$author_4 = self::factory()->user->create( array( 'user_login' => rand_str(), 'user_pass' => rand_str(), 'role' => 'author' ) );
+		$post_4 = self::factory()->post->create( array( 'post_title' => rand_str(), 'post_author' => $author_4, 'post_date' => '2007-01-01 00:00:00' ) );
 
 		$posts = $this->q->query( array(
 			'author' => '',
@@ -646,9 +623,9 @@ class Tests_Query_Results extends WP_UnitTestCase {
 	 * @ticket 20308
 	 */
 	function test_post_password() {
-		$one   = (string) $this->factory->post->create( array( 'post_password' => '' ) );
-		$two   = (string) $this->factory->post->create( array( 'post_password' => 'burrito' ) );
-		$three = (string) $this->factory->post->create( array( 'post_password' => 'burrito' ) );
+		$one   = (string) self::factory()->post->create( array( 'post_password' => '' ) );
+		$two   = (string) self::factory()->post->create( array( 'post_password' => 'burrito' ) );
+		$three = (string) self::factory()->post->create( array( 'post_password' => 'burrito' ) );
 
 		$args = array( 'post__in' => array( $one, $two, $three ), 'fields' => 'ids' );
 
@@ -688,9 +665,9 @@ class Tests_Query_Results extends WP_UnitTestCase {
 	function test_duplicate_slug_in_hierarchical_post_type() {
 		register_post_type( 'handbook', array( 'hierarchical' => true ) );
 
-		$post_1 = $this->factory->post->create( array( 'post_title' => 'Getting Started', 'post_type' => 'handbook' ) );
-		$post_2 = $this->factory->post->create( array( 'post_title' => 'Contributing to the WordPress Codex', 'post_type' => 'handbook' ) );
-		$post_3 = $this->factory->post->create( array( 'post_title' => 'Getting Started', 'post_parent' => $post_2, 'post_type' => 'handbook' ) );
+		$post_1 = self::factory()->post->create( array( 'post_title' => 'Getting Started', 'post_type' => 'handbook' ) );
+		$post_2 = self::factory()->post->create( array( 'post_title' => 'Contributing to the WordPress Codex', 'post_type' => 'handbook' ) );
+		$post_3 = self::factory()->post->create( array( 'post_title' => 'Getting Started', 'post_parent' => $post_2, 'post_type' => 'handbook' ) );
 
 		$result = $this->q->query( array( 'handbook' => 'getting-started', 'post_type' => 'handbook' ) );
 		$this->assertCount( 1, $result );
@@ -700,24 +677,45 @@ class Tests_Query_Results extends WP_UnitTestCase {
 	 * @ticket 29615
 	 */
 	function test_child_post_in_hierarchical_post_type_with_default_permalinks() {
-		global $wp_rewrite;
-
-		$old_permastruct = get_option( 'permalink_structure' );
-		$wp_rewrite->set_permalink_structure( '' );
-		$wp_rewrite->flush_rules();
-
 		register_post_type( 'handbook', array( 'hierarchical' => true ) );
 
-		$post_1 = $this->factory->post->create( array( 'post_title' => 'Contributing to the WordPress Codex', 'post_type' => 'handbook' ) );
-		$post_2 = $this->factory->post->create( array( 'post_title' => 'Getting Started', 'post_parent' => $post_1, 'post_type' => 'handbook' ) );
+		$post_1 = self::factory()->post->create( array( 'post_title' => 'Contributing to the WordPress Codex', 'post_type' => 'handbook' ) );
+		$post_2 = self::factory()->post->create( array( 'post_title' => 'Getting Started', 'post_parent' => $post_1, 'post_type' => 'handbook' ) );
 
 		$this->assertContains( 'contributing-to-the-wordpress-codex/getting-started', get_permalink( $post_2 ) );
 
 		$result = $this->q->query( array( 'handbook' => 'contributing-to-the-wordpress-codex/getting-started', 'post_type' => 'handbook' ) );
 		$this->assertCount( 1, $result );
-
-		$wp_rewrite->set_permalink_structure( $old_permastruct );
-		$wp_rewrite->flush_rules();
 	}
 
+	function test_title() {
+		$title = 'Tacos are Cool';
+		$post_id = self::factory()->post->create( array(
+			'post_title' => $title,
+			'post_type' => 'post',
+			'post_status' => 'publish'
+		) );
+
+		$result1 = $this->q->query( array( 'title' => $title, 'fields' => 'ids' ) );
+		$this->assertCount( 1, $result1 );
+		$this->assertContains( $post_id, $result1 );
+
+		$result2 = $this->q->query( array( 'title' => 'Tacos', 'fields' => 'ids' ) );
+		$this->assertCount( 0, $result2 );
+	}
+
+	/**
+	 * @ticket 15610
+	 */
+	public function test_main_comments_feed_includes_attachment_comments() {
+		$attachment_id = self::factory()->post->create( array( 'post_type' => 'attachment' ) );
+		$comment_id = self::factory()->comment->create( array( 'comment_post_ID' => $attachment_id, 'comment_approved' => '1' ) );
+
+		$this->q->query( array( 'withcomments' => 1, 'feed' => 'feed' ) );
+
+		$this->assertTrue( $this->q->have_comments() );
+
+		$feed_comment = $this->q->next_comment();
+		$this->assertEquals( $comment_id, $feed_comment->comment_ID );
+	}
 }

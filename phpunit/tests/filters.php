@@ -197,6 +197,25 @@ class Tests_Filters extends WP_UnitTestCase {
 	}
 
 	/**
+	 * @ticket 20920
+	 */
+	function test_remove_all_filters_should_respect_the_priority_argument() {
+		$a = new MockAction();
+		$tag = rand_str();
+		$val = rand_str();
+
+		add_filter( $tag, array( $a, 'filter' ), 12 );
+		$this->assertTrue( has_filter( $tag ) );
+
+		// Should not be removed.
+		remove_all_filters( $tag, 11 );
+		$this->assertTrue( has_filter( $tag ) );
+
+		remove_all_filters( $tag, 12 );
+		$this->assertFalse( has_filter( $tag ) );
+	}
+
+	/**
 	 * @ticket 9886
 	 */
 	function test_filter_ref_array() {
@@ -251,24 +270,6 @@ class Tests_Filters extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @ticket 21169
-	 */
-	function test_filter_removal_during_filter() {
-		$tag = rand_str();
-		$a = new MockAction();
-		$b = new MockAction();
-
-		add_action( $tag, array($a, 'filter_append'), 11, 1 );
-		add_action( $tag, array($b, 'filter_append'), 12, 1 );
-		add_action( $tag, array($this, '_self_removal'), 10, 1 );
-
-		$result = apply_filters($tag, $tag);
-		$this->assertEquals( 1, $a->get_call_count(), 'priority 11 filters should run after priority 10 empties itself' );
-		$this->assertEquals( 1, $b->get_call_count(), 'priority 12 filters should run after priority 10 empties itself and priority 11 runs' );
-		$this->assertEquals( $result, $tag . '_append_append', 'priority 11 and 12 filters should run after priority 10 empties itself' );
-	}
-
-	/**
 	 * @ticket 29070
 	 */
 	function test_has_filter_after_remove_all_filters() {
@@ -314,4 +315,57 @@ class Tests_Filters extends WP_UnitTestCase {
 	 	$the_ = current( $filters );
 	 	$this->assertEquals( $the_['function'], array( $this, '_action_test_has_filter_doesnt_reset_wp_filter' ) );
 	 }
+
+	/**
+	 * @ticket 10441
+	 * @expectedDeprecated tests_apply_filters_deprecated
+	 */
+	public function test_apply_filters_deprecated() {
+		$p = 'Foo';
+
+		add_filter( 'tests_apply_filters_deprecated', array( __CLASS__, 'deprecated_filter_callback' ) );
+		$p = apply_filters_deprecated( 'tests_apply_filters_deprecated', array( $p ), '4.6' );
+		remove_filter( 'tests_apply_filters_deprecated', array( __CLASS__, 'deprecated_filter_callback' ) );
+
+		$this->assertSame( 'Bar', $p );
+	}
+
+	public static function deprecated_filter_callback( $p ) {
+		$p = 'Bar';
+		return $p;
+	}
+
+	/**
+	 * @ticket 10441
+	 * @expectedDeprecated tests_apply_filters_deprecated
+	 */
+	public function test_apply_filters_deprecated_with_multiple_params() {
+		$p1 = 'Foo1';
+		$p2 = 'Foo2';
+
+		add_filter( 'tests_apply_filters_deprecated', array( __CLASS__, 'deprecated_filter_callback_multiple_params' ), 10, 2 );
+		$p1 = apply_filters_deprecated( 'tests_apply_filters_deprecated', array( $p1, $p2 ), '4.6' );
+		remove_filter( 'tests_apply_filters_deprecated', array( __CLASS__, 'deprecated_filter_callback_multiple_params' ), 10, 2 );
+
+		$this->assertSame( 'Bar1', $p1 );
+
+		// Not passed by reference, so not modified.
+		$this->assertSame( 'Foo2', $p2 );
+	}
+
+	public static function deprecated_filter_callback_multiple_params( $p1, $p2 ) {
+		$p1 = 'Bar1';
+		$p2 = 'Bar2';
+
+		return $p1;
+	}
+
+	/**
+	 * @ticket 10441
+	 */
+	public function test_apply_filters_deprecated_without_filter() {
+		$val = 'Foobar';
+
+		$this->assertSame( $val, apply_filters_deprecated( 'tests_apply_filters_deprecated', array( $val ), '4.6' ) );
+	}
 }

@@ -26,8 +26,8 @@ class Tests_Ajax_EditComment extends WP_Ajax_UnitTestCase {
 	 */
 	public function setUp() {
 		parent::setUp();
-		$post_id = $this->factory->post->create();
-		$this->factory->comment->create_post_comments( $post_id, 5 );
+		$post_id = self::factory()->post->create();
+		self::factory()->comment->create_post_comments( $post_id, 5 );
 		$this->_comment_post = get_post( $post_id );
 	}
 
@@ -46,6 +46,52 @@ class Tests_Ajax_EditComment extends WP_Ajax_UnitTestCase {
 			'post_id' => $this->_comment_post->ID
 		) );
 		$comment = array_pop( $comments );
+
+		// Set up a default request
+		$_POST['_ajax_nonce-replyto-comment'] = wp_create_nonce( 'replyto-comment' );
+		$_POST['comment_ID']                  = $comment->comment_ID;
+		$_POST['content']                     = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
+
+		// Make the request
+		try {
+			$this->_handleAjax( 'edit-comment' );
+		} catch ( WPAjaxDieContinueException $e ) {
+			unset( $e );
+		}
+
+		// Get the response
+		$xml = simplexml_load_string( $this->_last_response, 'SimpleXMLElement', LIBXML_NOCDATA );
+
+		// Check the meta data
+		$this->assertEquals( -1, (string) $xml->response[0]->edit_comment['position'] );
+		$this->assertEquals( $comment->comment_ID, (string) $xml->response[0]->edit_comment['id'] );
+		$this->assertEquals( 'edit-comment_' . $comment->comment_ID, (string) $xml->response['action'] );
+
+		// Check the payload
+		$this->assertNotEmpty( (string) $xml->response[0]->edit_comment[0]->response_data );
+
+		// And supplemental is empty
+		$this->assertEmpty( (string) $xml->response[0]->edit_comment[0]->supplemental );
+	}
+
+	/**
+	 * @ticket 33154
+	 */
+	function test_editor_can_edit_orphan_comments() {
+		global $wpdb;
+
+		// Become an editor
+		$this->_setRole( 'editor' );
+
+		// Get a comment
+		$comments = get_comments( array(
+			'post_id' => $this->_comment_post->ID
+		) );
+		$comment = array_pop( $comments );
+
+		// Manually update the comment_post_ID, because wp_update_comment() will prevent it.
+		$wpdb->query( "UPDATE {$wpdb->comments} SET comment_post_ID=0 WHERE comment_ID={$comment->comment_ID}" );
+		clean_comment_cache( $comment->comment_ID );
 
 		// Set up a default request
 		$_POST['_ajax_nonce-replyto-comment'] = wp_create_nonce( 'replyto-comment' );

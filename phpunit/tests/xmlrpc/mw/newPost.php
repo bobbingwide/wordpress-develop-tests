@@ -117,17 +117,7 @@ class Tests_XMLRPC_mw_newPost extends WP_XMLRPC_UnitTestCase {
 
 		// create attachment
 		$filename = ( DIR_TESTDATA.'/images/a2-small.jpg' );
-		$contents = file_get_contents( $filename );
-		$upload = wp_upload_bits( $filename, null, $contents );
-		$this->assertTrue( empty( $upload['error'] ) );
-
-		$attachment = array(
-			'post_title' => 'Post Thumbnail',
-			'post_type' => 'attachment',
-			'post_mime_type' => 'image/jpeg',
-			'guid' => $upload['url']
-		);
-		$attachment_id = wp_insert_attachment( $attachment, $upload['file'] );
+		$attachment_id = self::factory()->attachment->create_upload_object( $filename );
 
 		$post = array( 'title' => 'Post Thumbnail Test', 'wp_post_thumbnail' => $attachment_id );
 		$result = $this->myxmlrpcserver->mw_newPost( array( 1, 'author', 'author', $post ) );
@@ -159,4 +149,25 @@ class Tests_XMLRPC_mw_newPost extends WP_XMLRPC_UnitTestCase {
 		$this->assertEquals( 'page', $out->post_type );
 	}
 
+
+	/**
+	 * @ticket 16985
+	 */
+	function test_draft_post_date() {
+		$this->make_user_by_role( 'editor' );
+
+		$post = array(
+			'title' => 'Test',
+			'post_type' => 'post',
+			'post_status' => 'draft'
+		);
+		$result = $this->myxmlrpcserver->mw_newPost( array( 1, 'editor', 'editor', $post ) );
+		$this->assertNotInstanceOf( 'IXR_Error', $result );
+		$this->assertStringMatchesFormat( '%d', $result );
+
+		$out = get_post( $result );
+		$this->assertEquals( 'post', $out->post_type );
+		$this->assertEquals( 'draft', $out->post_status );
+		$this->assertEquals( '0000-00-00 00:00:00', $out->post_date_gmt );
+	}
 }

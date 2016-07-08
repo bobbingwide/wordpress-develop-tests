@@ -19,27 +19,34 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 	 * A post with at least one comment
 	 * @var mixed
 	 */
-	protected $_comment_post = null;
+	protected static $comment_post = null;
 
 	/**
 	 * Draft post
 	 * @var mixed
 	 */
-	protected $_draft_post = null;
+	protected static $draft_post = null;
 
-	/**
-	 * Set up the test fixture
-	 */
-	public function setUp() {
-		parent::setUp();
-		$post_id = $this->factory->post->create();
-		$this->factory->comment->create_post_comments( $post_id, 5 );
-		$this->_comment_post = get_post( $post_id );
+	protected static $comment_ids = array();
 
-		$post_id = $this->factory->post->create( array( 'post_status' => 'draft' ) );
-		$this->_draft_post = get_post( $post_id );
+	public static function wpSetUpBeforeClass( $factory ) {
+		self::$comment_post = $factory->post->create_and_get();
+		self::$comment_ids = $factory->comment->create_post_comments( self::$comment_post->ID, 5 );
+		self::$draft_post = $factory->post->create_and_get( array( 'post_status' => 'draft' ) );
+	}
 
-		$_SERVER['REMOTE_ADDR'] = '';
+	public static function wpTearDownAfterClass() {
+		foreach ( self::$comment_ids as $comment_id ) {
+			wp_delete_comment( $comment_id, true );
+		}
+
+		wp_delete_post( self::$comment_post->ID, true );
+		wp_delete_post( self::$draft_post->ID, true );
+	}
+
+	public function tearDown() {
+		remove_filter( 'query', array( $this, '_block_comments' ) );
+		parent::tearDown();
 	}
 
 	/**
@@ -54,7 +61,7 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 
 		// Get a comment
 		$comments = get_comments( array(
-		    'post_id' => $this->_comment_post->ID
+		    'post_id' => self::$comment_post->ID
 		) );
 		$comment = array_pop( $comments );
 
@@ -62,7 +69,7 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 		$_POST['_ajax_nonce-replyto-comment'] = wp_create_nonce( 'replyto-comment' );
 		$_POST['comment_ID']                  = $comment->comment_ID;
 		$_POST['content']                     = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
-		$_POST['comment_post_ID']             = $this->_comment_post->ID;
+		$_POST['comment_post_ID']             = self::$comment_post->ID;
 
 		// Make the request
 		try {
@@ -98,7 +105,7 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 
 		// Get a comment
 		$comments = get_comments( array(
-		'post_id' => $this->_comment_post->ID
+		'post_id' => self::$comment_post->ID
 		) );
 		$comment = array_pop( $comments );
 
@@ -106,7 +113,7 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 		$_POST['_ajax_nonce-replyto-comment'] = wp_create_nonce( 'replyto-comment' );
 		$_POST['comment_ID']                  = $comment->comment_ID;
 		$_POST['content']                     = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
-		$_POST['comment_post_ID']             = $this->_comment_post->ID;
+		$_POST['comment_post_ID']             = self::$comment_post->ID;
 
 		// Make the request
 		$this->setExpectedException( 'WPAjaxDieStopException', '-1' );
@@ -125,7 +132,7 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 
 		// Get a comment
 		$comments = get_comments( array(
-		    'post_id' => $this->_comment_post->ID
+		    'post_id' => self::$comment_post->ID
 		) );
 		$comment = array_pop( $comments );
 
@@ -133,7 +140,7 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 		$_POST['_ajax_nonce-replyto-comment'] = wp_create_nonce( uniqid() );
 		$_POST['comment_ID']                  = $comment->comment_ID;
 		$_POST['content']                     = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
-		$_POST['comment_post_ID']             = $this->_comment_post->ID;
+		$_POST['comment_post_ID']             = self::$comment_post->ID;
 
 		// Make the request
 		$this->setExpectedException( 'WPAjaxDieStopException', '-1' );
@@ -173,7 +180,7 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 		// Set up a default request
 		$_POST['_ajax_nonce-replyto-comment'] = wp_create_nonce( 'replyto-comment' );
 		$_POST['content']                     = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
-		$_POST['comment_post_ID']             = $this->_draft_post->ID;
+		$_POST['comment_post_ID']             = self::$draft_post->ID;
 
 		// Make the request
 		$this->setExpectedException( 'WPAjaxDieStopException', 'ERROR: you are replying to a comment on a draft post.' );
@@ -195,7 +202,7 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 		// Set up a default request
 		$_POST['_ajax_nonce-replyto-comment'] = wp_create_nonce( 'replyto-comment' );
 		$_POST['content']                     = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
-		$_POST['comment_post_ID']             = $this->_comment_post->ID;
+		$_POST['comment_post_ID']             = self::$comment_post->ID;
 
 		// Block comments from being saved, simulate a DB error
 		add_filter( 'query', array( $this, '_block_comments' ) );
@@ -220,7 +227,6 @@ class Tests_Ajax_ReplytoComment extends WP_Ajax_UnitTestCase {
 	public function _block_comments( $sql ) {
 		global $wpdb;
 		if ( false !== strpos( $sql, $wpdb->comments ) && 0 === stripos( trim ( $sql ), 'INSERT INTO') ) {
-			remove_filter( 'query', array( $this, '_block_comments' ) );
 			return '';
 		}
 		return $sql;

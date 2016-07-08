@@ -10,12 +10,12 @@ class Tests_HTTP_HTTP extends WP_UnitTestCase {
 	 * @dataProvider make_absolute_url_testcases
 	 */
 	function test_make_absolute_url( $relative_url, $absolute_url, $expected ) {
-		if ( ! is_callable( array( 'WP_HTTP', 'make_absolute_url' ) ) ) {
+		if ( ! is_callable( array( 'WP_Http', 'make_absolute_url' ) ) ) {
 			$this->markTestSkipped( "This version of WP_HTTP doesn't support WP_HTTP::make_absolute_url()" );
 			return;
 		}
 
-		$actual = WP_HTTP::make_absolute_url( $relative_url, $absolute_url );
+		$actual = WP_Http::make_absolute_url( $relative_url, $absolute_url );
 		$this->assertEquals( $expected, $actual );
 	}
 
@@ -70,12 +70,8 @@ class Tests_HTTP_HTTP extends WP_UnitTestCase {
 	/**
 	 * @dataProvider parse_url_testcases
 	 */
-	function test_parse_url( $url, $expected ) {
-		if ( ! is_callable( array( 'WP_HTTP_Testable', 'parse_url' ) ) ) {
-			$this->markTestSkipped( "This version of WP_HTTP doesn't support WP_HTTP::parse_url()" );
-			return;
-		}
-		$actual = WP_HTTP_Testable::parse_url( $url );
+	function test_wp_parse_url( $url, $expected ) {
+		$actual = wp_parse_url( $url );
 		$this->assertEquals( $expected, $actual );
 	}
 
@@ -92,6 +88,10 @@ class Tests_HTTP_HTTP extends WP_UnitTestCase {
 			// < PHP 5.4.7: Scheme seperator in the URL
 			array( 'http://example.com/http://example.net/', array( 'scheme' => 'http', 'host' => 'example.com', 'path' => '/http://example.net/' ) ),
 			array( '/path/http://example.net/', array( 'path' => '/path/http://example.net/' ) ),
+
+			// < PHP 5.4.7: IPv6 literals in schemeless URLs are handled incorrectly.
+			array( '//[::FFFF::127.0.0.1]/', array( 'host' => '[::FFFF::127.0.0.1]', 'path' => '/' ) ),
+
 			// PHP's parse_url() calls this an invalid url, we handle it as a path
 			array( '/://example.com/', array( 'path' => '/://example.com/' ) ),
 
@@ -102,13 +102,20 @@ class Tests_HTTP_HTTP extends WP_UnitTestCase {
 		  - ://example.com - assumed path in PHP >= 5.4.7, fails in <5.4.7
 		*/
 	}
-}
 
-/**
- * A Wrapper of WP_HTTP to make parse_url() publicaly accessible for testing purposes.
- */
-class WP_HTTP_Testable extends WP_HTTP {
-	public static function parse_url( $url ) {
-		return parent::parse_url( $url );
+	/**
+	 * @ticket 35426
+	 */
+	public function test_http_response_code_constants() {
+		global $wp_header_to_desc;
+
+		$ref = new ReflectionClass( 'WP_Http' );
+		$constants = $ref->getConstants();
+
+		// This primes the `$wp_header_to_desc` global:
+		get_status_header_desc( 200 );
+
+		$this->assertEquals( array_keys( $wp_header_to_desc ), array_values( $constants ) );
+
 	}
 }

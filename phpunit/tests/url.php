@@ -5,132 +5,196 @@
  * @group url
  */
 class Tests_URL extends WP_UnitTestCase {
-	var $_old_server;
+
 	function setUp() {
 		parent::setUp();
-		$this->_old_server = $_SERVER;
 		$GLOBALS['pagenow'] = '';
 	}
 
-	function tearDown() {
-		$_SERVER = $this->_old_server;
-		parent::tearDown();
+	/**
+	 * @dataProvider data_is_ssl
+	 */
+	function test_is_ssl( $value, $expected ) {
+		$_SERVER['HTTPS'] = $value;
+
+		$is_ssl = is_ssl();
+		$this->assertSame( $expected, $is_ssl );
 	}
 
-	function test_is_ssl_positive() {
-		$_SERVER['HTTPS'] = 'on';
-		$this->assertTrue( is_ssl() );
+	function data_is_ssl() {
+		return array(
+			array(
+				'on',
+				true,
+			),
+			array(
+				'ON',
+				true,
+			),
+			array(
+				'1',
+				true,
+			),
+			array(
+				'off',
+				false,
+			),
+			array(
+				'OFF',
+				false,
+			),
+		);
+	}
 
-		$_SERVER['HTTPS'] = 'ON';
-		$this->assertTrue( is_ssl() );
-
-		$_SERVER['HTTPS'] = '1';
-		$this->assertTrue( is_ssl() );
-
+	function test_is_ssl_by_port() {
 		unset( $_SERVER['HTTPS'] );
 		$_SERVER['SERVER_PORT'] = '443';
-		$this->assertTrue( is_ssl() );
+
+		$is_ssl = is_ssl();
+		$this->assertTrue( $is_ssl );
 	}
 
-	function test_is_ssl_negative() {
-		$_SERVER['HTTPS'] = 'off';
-		$this->assertFalse( is_ssl() );
+	function test_is_ssl_with_no_value() {
+		unset( $_SERVER['HTTPS'] );
 
-		$_SERVER['HTTPS'] = 'OFF';
-		$this->assertFalse( is_ssl() );
-
-		unset($_SERVER['HTTPS']);
-		$this->assertFalse( is_ssl() );
+		$is_ssl = is_ssl();
+		$this->assertFalse( $is_ssl );
 	}
 
-	function test_admin_url_valid() {
-		$paths = array(
-			'' => "/wp-admin/",
-			'foo' => "/wp-admin/foo",
-			'/foo' => "/wp-admin/foo",
-			'/foo/' => "/wp-admin/foo/",
-			'foo.php' => "/wp-admin/foo.php",
-			'/foo.php' => "/wp-admin/foo.php",
-			'/foo.php?bar=1' => "/wp-admin/foo.php?bar=1",
+	/**
+	 * @dataProvider data_admin_urls
+	 *
+	 * @param string $url      Test URL.
+	 * @param string $expected Expected result.
+	 */
+	function test_admin_url( $url, $expected ) {
+		$siteurl_http   = get_option( 'siteurl' );
+		$admin_url_http = admin_url( $url );
+
+		$_SERVER['HTTPS'] = 'on';
+
+		$siteurl_https   = set_url_scheme( $siteurl_http, 'https' );
+		$admin_url_https = admin_url( $url );
+
+		$this->assertEquals( $siteurl_http . $expected, $admin_url_http );
+		$this->assertEquals( $siteurl_https . $expected, $admin_url_https );
+	}
+
+	function data_admin_urls() {
+		return array(
+			array(
+				null,
+				'/wp-admin/'
+			),
+			array(
+				0,
+				'/wp-admin/'
+			),
+			array(
+				-1,
+				'/wp-admin/'
+			),
+			array(
+				'///',
+				'/wp-admin/'
+			),
+			array(
+				'',
+				'/wp-admin/',
+			),
+			array(
+				'foo',
+				'/wp-admin/foo',
+			),
+			array(
+				'/foo',
+				'/wp-admin/foo',
+			),
+			array(
+				'/foo/',
+				'/wp-admin/foo/',
+			),
+			array(
+				'foo.php',
+				'/wp-admin/foo.php',
+			),
+			array(
+				'/foo.php',
+				'/wp-admin/foo.php',
+			),
+			array(
+				'/foo.php?bar=1',
+				'/wp-admin/foo.php?bar=1',
+			),
 		);
-		$https = array('on', 'off');
-
-		foreach ($https as $val) {
-			$_SERVER['HTTPS'] = $val;
-			$siteurl = get_option('siteurl');
-			if ( $val == 'on' )
-				$siteurl = str_replace('http://', 'https://', $siteurl);
-
-			foreach ($paths as $in => $out) {
-				$this->assertEquals( $siteurl.$out, admin_url($in), "admin_url('{$in}') should equal '{$siteurl}{$out}'");
-			}
-		}
 	}
 
-	function test_admin_url_invalid() {
-		$paths = array(
-			null => "/wp-admin/",
-			0 => "/wp-admin/",
-			-1 => "/wp-admin/",
-			'///' => "/wp-admin/",
-		);
-		$https = array('on', 'off');
+	/**
+	 * @dataProvider data_home_urls
+	 *
+	 * @param string $url      Test URL.
+	 * @param string $expected Expected result.
+	 */
+	function test_home_url( $url, $expected ) {
+		$homeurl_http  = get_option( 'home' );
+		$home_url_http = home_url( $url );
 
-		foreach ($https as $val) {
-			$_SERVER['HTTPS'] = $val;
-			$siteurl = get_option('siteurl');
-			if ( $val == 'on' )
-				$siteurl = str_replace('http://', 'https://', $siteurl);
+		$_SERVER['HTTPS'] = 'on';
 
-			foreach ($paths as $in => $out) {
-				$this->assertEquals( $siteurl.$out, admin_url($in), "admin_url('{$in}') should equal '{$siteurl}{$out}'");
-			}
-		}
+		$homeurl_https  = set_url_scheme( $homeurl_http, 'https' );
+		$home_url_https = home_url( $url );
+
+		$this->assertEquals( $homeurl_http . $expected, $home_url_http );
+		$this->assertEquals( $homeurl_https . $expected, $home_url_https );
 	}
 
-	function test_home_url_valid() {
-		$paths = array(
-			'' => "",
-			'foo' => "/foo",
-			'/foo' => "/foo",
-			'/foo/' => "/foo/",
-			'foo.php' => "/foo.php",
-			'/foo.php' => "/foo.php",
-			'/foo.php?bar=1' => "/foo.php?bar=1",
+	function data_home_urls() {
+		return array(
+			array(
+				null,
+				"",
+			),
+			array(
+				0,
+				"",
+			),
+			array(
+				-1,
+				"",
+			),
+			array(
+				'///',
+				"/",
+			),
+			array(
+				'',
+				"",
+			),
+			array(
+				'foo',
+				"/foo",
+			),
+			array(
+				'/foo',
+				"/foo",
+			),
+			array(
+				'/foo/',
+				"/foo/",
+			),
+			array(
+				'foo.php',
+				"/foo.php",
+			),
+			array(
+				'/foo.php',
+				"/foo.php",
+			),
+			array(
+				'/foo.php?bar=1',
+				"/foo.php?bar=1",
+			),
 		);
-		$https = array('on', 'off');
-
-		foreach ($https as $val) {
-			$_SERVER['HTTPS'] = $val;
-			$home = get_option('home');
-			if ( $val == 'on' )
-				$home = str_replace('http://', 'https://', $home);
-
-			foreach ($paths as $in => $out) {
-				$this->assertEquals( $home.$out, home_url($in), "home_url('{$in}') should equal '{$home}{$out}'");
-			}
-		}
-	}
-
-	function test_home_url_invalid() {
-		$paths = array(
-			null => "",
-			0 => "",
-			-1 => "",
-			'///' => "/",
-		);
-		$https = array('on', 'off');
-
-		foreach ($https as $val) {
-			$_SERVER['HTTPS'] = $val;
-			$home = get_option('home');
-			if ( $val == 'on' )
-				$home = str_replace('http://', 'https://', $home);
-
-			foreach ($paths as $in => $out) {
-				$this->assertEquals( $home.$out, home_url($in), "home_url('{$in}') should equal '{$home}{$out}'");
-			}
-		}
 	}
 
 	function test_home_url_from_admin() {
@@ -240,7 +304,6 @@ class Tests_URL extends WP_UnitTestCase {
 		);
 
 		$forced_admin = force_ssl_admin();
-		$forced_login = force_ssl_login();
 		$i = 0;
 		foreach ( $links as $link ) {
 			$this->assertEquals( $https_links[ $i ], set_url_scheme( $link, 'https' ) );
@@ -253,7 +316,6 @@ class Tests_URL extends WP_UnitTestCase {
 			$_SERVER['HTTPS'] = 'off';
 			$this->assertEquals( $http_links[ $i ], set_url_scheme( $link ) );
 
-			force_ssl_login( false );
 			force_ssl_admin( true );
 			$this->assertEquals( $https_links[ $i ], set_url_scheme( $link, 'admin' ) );
 			$this->assertEquals( $https_links[ $i ], set_url_scheme( $link, 'login_post' ) );
@@ -266,23 +328,16 @@ class Tests_URL extends WP_UnitTestCase {
 			$this->assertEquals( $http_links[ $i ], set_url_scheme( $link, 'login' ) );
 			$this->assertEquals( $http_links[ $i ], set_url_scheme( $link, 'rpc' ) );
 
-			force_ssl_login( true );
-			$this->assertEquals( $https_links[ $i ], set_url_scheme( $link, 'admin' ) );
-			$this->assertEquals( $https_links[ $i ], set_url_scheme( $link, 'login_post' ) );
-			$this->assertEquals( $https_links[ $i ], set_url_scheme( $link, 'login' ) );
-			$this->assertEquals( $https_links[ $i ], set_url_scheme( $link, 'rpc' ) );
-
 			$i++;
 		}
 
 		force_ssl_admin( $forced_admin );
-		force_ssl_login( $forced_login );
 	}
 
-	function test_get_adjacent_post() {
-		$post_id = $this->factory->post->create();
-		sleep( 1 ); // get_adjacent_post() doesn't handle posts created in the same second.
-		$post_id2 = $this->factory->post->create();
+	public function test_get_adjacent_post() {
+		$now = time();
+		$post_id = self::factory()->post->create( array( 'post_date' => date( 'Y-m-d H:i:s', $now - 1 ) ) );
+		$post_id2 = self::factory()->post->create( array( 'post_date' => date( 'Y-m-d H:i:s', $now ) ) );
 
 		if ( ! isset( $GLOBALS['post'] ) )
 			$GLOBALS['post'] = null;
@@ -306,9 +361,89 @@ class Tests_URL extends WP_UnitTestCase {
 		$this->assertNull( get_adjacent_post() );
 
 		$GLOBALS['post'] = $orig_post;
+	}
 
-		// Tests requiring creating more posts can't be run since the query
-		// cache in get_adjacent_post() requires a fresh page load to invalidate.
+	/**
+	 * Test get_adjacent_post returns the next private post when the author is the currently logged in user.
+	 *
+	 * @ticket 30287
+	 */
+	public function test_get_adjacent_post_should_return_private_posts_belonging_to_the_current_user() {
+		$u = self::factory()->user->create( array( 'role' => 'author' ) );
+		$old_uid = get_current_user_id();
+		wp_set_current_user( $u );
+
+		$now = time();
+		$p1 = self::factory()->post->create( array( 'post_author' => $u, 'post_status' => 'private', 'post_date' => date( 'Y-m-d H:i:s', $now - 1 ) ) );
+		$p2 = self::factory()->post->create( array( 'post_author' => $u, 'post_date' => date( 'Y-m-d H:i:s', $now ) ) );
+
+		if ( ! isset( $GLOBALS['post'] ) ) {
+			$GLOBALS['post'] = null;
+		}
+		$orig_post = $GLOBALS['post'];
+
+		$GLOBALS['post'] = get_post( $p2 );
+
+		$p = get_adjacent_post();
+		$this->assertEquals( $p1, $p->ID );
+
+		$GLOBALS['post'] = $orig_post;
+		wp_set_current_user( $old_uid );
+	}
+
+	/**
+	 * @ticket 30287
+	 */
+	public function test_get_adjacent_post_should_return_private_posts_belonging_to_other_users_if_the_current_user_can_read_private_posts() {
+		$u1 = self::factory()->user->create( array( 'role' => 'author' ) );
+		$u2 = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		$old_uid = get_current_user_id();
+		wp_set_current_user( $u2 );
+
+		$now = time();
+		$p1 = self::factory()->post->create( array( 'post_author' => $u1, 'post_status' => 'private', 'post_date' => date( 'Y-m-d H:i:s', $now - 1 ) ) );
+		$p2 = self::factory()->post->create( array( 'post_author' => $u1, 'post_date' => date( 'Y-m-d H:i:s', $now ) ) );
+
+		if ( ! isset( $GLOBALS['post'] ) ) {
+			$GLOBALS['post'] = null;
+		}
+		$orig_post = $GLOBALS['post'];
+
+		$GLOBALS['post'] = get_post( $p2 );
+
+		$p = get_adjacent_post();
+		$this->assertEquals( $p1, $p->ID );
+
+		$GLOBALS['post'] = $orig_post;
+		wp_set_current_user( $old_uid );
+	}
+
+	/**
+	 * @ticket 30287
+	 */
+	public function test_get_adjacent_post_should_not_return_private_posts_belonging_to_other_users_if_the_current_user_cannot_read_private_posts() {
+		$u1 = self::factory()->user->create( array( 'role' => 'author' ) );
+		$u2 = self::factory()->user->create( array( 'role' => 'author' ) );
+		$old_uid = get_current_user_id();
+		wp_set_current_user( $u2 );
+
+		$now = time();
+		$p1 = self::factory()->post->create( array( 'post_author' => $u1, 'post_date' => date( 'Y-m-d H:i:s', $now - 2 ) ) );
+		$p2 = self::factory()->post->create( array( 'post_author' => $u1, 'post_status' => 'private', 'post_date' => date( 'Y-m-d H:i:s', $now - 1 ) ) );
+		$p3 = self::factory()->post->create( array( 'post_author' => $u1, 'post_date' => date( 'Y-m-d H:i:s', $now ) ) );
+
+		if ( ! isset( $GLOBALS['post'] ) ) {
+			$GLOBALS['post'] = null;
+		}
+		$orig_post = $GLOBALS['post'];
+
+		$GLOBALS['post'] = get_post( $p3 );
+
+		$p = get_adjacent_post();
+		$this->assertEquals( $p1, $p->ID );
+
+		$GLOBALS['post'] = $orig_post;
+		wp_set_current_user( $old_uid );
 	}
 
 	/**

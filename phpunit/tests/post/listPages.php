@@ -27,15 +27,15 @@ class Tests_List_Pages extends WP_UnitTestCase {
 		global $wpdb;
 		$wpdb->query( 'TRUNCATE ' . $wpdb->prefix . 'posts' );
 		$pages = array();
-		$this->factory->user->create();
-		$pages[] = $this->factory->post->create( array( 'post_type' => 'page', 'post_title' => 'Parent 1' ) );
-		$pages[] = $this->factory->post->create( array( 'post_type' => 'page', 'post_title' => 'Parent 2' ) );
-		$pages[] = $this->factory->post->create( array( 'post_type' => 'page', 'post_title' => 'Parent 3', 'post_author' => '2' ) );
+		self::factory()->user->create();
+		$pages[] = self::factory()->post->create( array( 'post_type' => 'page', 'post_title' => 'Parent 1' ) );
+		$pages[] = self::factory()->post->create( array( 'post_type' => 'page', 'post_title' => 'Parent 2' ) );
+		$pages[] = self::factory()->post->create( array( 'post_type' => 'page', 'post_title' => 'Parent 3', 'post_author' => '2' ) );
 
 		foreach ( $pages as $page ) {
-			$this->pages[$page] = $this->factory->post->create( array( 'post_parent' => $page, 'post_type' => 'page', 'post_title' => 'Child 1' ) );
-			$this->pages[$page] = $this->factory->post->create( array( 'post_parent' => $page, 'post_type' => 'page', 'post_title' => 'Child 2' ) );
-			$this->pages[$page] = $this->factory->post->create( array( 'post_parent' => $page, 'post_type' => 'page', 'post_title' => 'Child 3' ) );
+			$this->pages[$page] = self::factory()->post->create( array( 'post_parent' => $page, 'post_type' => 'page', 'post_title' => 'Child 1' ) );
+			$this->pages[$page] = self::factory()->post->create( array( 'post_parent' => $page, 'post_type' => 'page', 'post_title' => 'Child 2' ) );
+			$this->pages[$page] = self::factory()->post->create( array( 'post_parent' => $page, 'post_type' => 'page', 'post_title' => 'Child 3' ) );
 		}
 	}
 
@@ -342,36 +342,4 @@ class Tests_List_Pages extends WP_UnitTestCase {
 		$actual = wp_list_pages( $args );
 		$this->AssertEquals( $expected['exclude'], $actual );
 	}
-
-	/**
-	 * @ticket 27326
-	 */
-	function test_wp_list_page_combo_exclude_depth() {
-		$args = array(
-			'echo' 		=> false,
-			'exclude' 	=> '3',
-			'depth'		=> 3
-		);
-		$expected['exclude_depth'] = '<li class="pagenav">Pages<ul><li class="page_item page-item-1 page_item_has_children"><a href="' . get_permalink( 1 ) . '">Parent 1</a>
-<ul class=\'children\'>
-	<li class="page_item page-item-4"><a href="' . get_permalink( 4 ) . '">Child 1</a></li>
-	<li class="page_item page-item-5"><a href="' . get_permalink( 5 ) . '">Child 2</a></li>
-	<li class="page_item page-item-6"><a href="' . get_permalink( 6 ) . '">Child 3</a></li>
-</ul>
-</li>
-<li class="page_item page-item-2 page_item_has_children"><a href="' . get_permalink( 2 ) . '">Parent 2</a>
-<ul class=\'children\'>
-	<li class="page_item page-item-7"><a href="' . get_permalink( 7 ) . '">Child 1</a></li>
-	<li class="page_item page-item-8"><a href="' . get_permalink( 8 ) . '">Child 2</a></li>
-	<li class="page_item page-item-9"><a href="' . get_permalink( 9 ) . '">Child 3</a></li>
-</ul>
-</li>
-<li class="page_item page-item-10"><a href="' . get_permalink( 10 ) . '">Child 1</a></li>
-<li class="page_item page-item-11"><a href="' . get_permalink( 11 ) . '">Child 2</a></li>
-<li class="page_item page-item-12"><a href="' . get_permalink( 12 ) . '">Child 3</a></li>
-</ul></li>';
-		$actual = wp_list_pages( $args );
-		$this->AssertEquals( $expected['exclude_depth'], $actual );
-	}
-
 }

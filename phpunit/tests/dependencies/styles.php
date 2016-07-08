@@ -12,6 +12,7 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 			$GLOBALS['wp_styles'] = null;
 		$this->old_wp_styles = $GLOBALS['wp_styles'];
 		remove_action( 'wp_default_styles', 'wp_default_styles' );
+		remove_action( 'wp_print_styles', 'print_emoji_styles' );
 		$GLOBALS['wp_styles'] = new WP_Styles();
 		$GLOBALS['wp_styles']->default_version = get_bloginfo( 'version' );
 	}
@@ -19,6 +20,7 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 	function tearDown() {
 		$GLOBALS['wp_styles'] = $this->old_wp_styles;
 		add_action( 'wp_default_styles', 'wp_default_styles' );
+		add_action( 'wp_print_styles', 'print_emoji_styles' );
 		parent::tearDown();
 	}
 
@@ -96,7 +98,7 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 		$style  = ".thing {\n";
 		$style .= "\tbackground: red;\n";
 		$style .= "}";
-		
+
 		$expected  = "<link rel='stylesheet' id='handle-css'  href='http://example.com?ver=1' type='text/css' media='all' />\n";
 		$expected .= "<style id='handle-inline-css' type='text/css'>\n";
 		$expected .= "$style\n";
@@ -147,7 +149,7 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 		$style1  = ".thing1 {\n";
 		$style1 .= "\tbackground: red;\n";
 		$style1 .= "}";
-		
+
 		$style2  = ".thing2 {\n";
 		$style2 .= "\tbackground: blue;\n";
 		$style2 .= "}";
@@ -206,4 +208,94 @@ class Tests_Dependencies_Styles extends WP_UnitTestCase {
 
 	}
 
+	/**
+	 * Test to make sure that inline styles attached to conditional
+	 * stylesheets are also conditional.
+	 */
+	public function test_conditional_inline_styles_are_also_conditional() {
+		$expected = <<<CSS
+<!--[if IE]>
+<link rel='stylesheet' id='handle-css'  href='http://example.com?ver=1' type='text/css' media='all' />
+<style id='handle-inline-css' type='text/css'>
+a { color: blue; }
+</style>
+<![endif]-->
+
+CSS;
+		wp_enqueue_style( 'handle', 'http://example.com', array(), 1 );
+		wp_style_add_data( 'handle', 'conditional', 'IE' );
+		wp_add_inline_style( 'handle', 'a { color: blue; }' );
+
+		$this->assertEquals( $expected, get_echo( 'wp_print_styles' ) );
+	}
+
+	/**
+	 * Testing 'wp_register_style' return boolean success/failure value.
+	 *
+	 * @ticket 31126
+	 */
+	function test_wp_register_style() {
+		$this->assertTrue( wp_register_style( 'duplicate-handler', 'http://example.com' ) );
+		$this->assertFalse( wp_register_style( 'duplicate-handler', 'http://example.com' ) );
+	}
+
+	/**
+	 * @ticket 35229
+	 */
+	function test_wp_add_inline_style_for_handle_without_source() {
+		$style  = "a { color: blue; }";
+
+		$expected  = "<link rel='stylesheet' id='handle-one-css'  href='http://example.com?ver=1' type='text/css' media='all' />\n";
+		$expected .= "<link rel='stylesheet' id='handle-two-css'  href='http://example.com?ver=1' type='text/css' media='all' />\n";
+		$expected .= "<style id='handle-three-inline-css' type='text/css'>\n";
+		$expected .= "$style\n";
+		$expected .= "</style>\n";
+
+		wp_register_style( 'handle-one', 'http://example.com', array(), 1 );
+		wp_register_style( 'handle-two', 'http://example.com', array(), 1 );
+		wp_register_style( 'handle-three', false, array( 'handle-one', 'handle-two' ) );
+
+		wp_enqueue_style( 'handle-three' );
+		wp_add_inline_style( 'handle-three', $style );
+
+		$this->assertEquals( $expected, get_echo( 'wp_print_styles' ) );
+	}
+
+	/**
+	 * @ticket 35921
+	 * @dataProvider data_styles_with_media
+	 */
+	function test_wp_enqueue_style_with_media( $expected, $media ) {
+		wp_enqueue_style( 'handle', 'http://example.com', array(), 1, $media );
+		$this->assertContains( $expected, get_echo( 'wp_print_styles' ) );
+	}
+
+	function data_styles_with_media() {
+		return array(
+			array(
+				"media='all'",
+				'all'
+			),
+			array(
+				"media='(orientation: portrait)'",
+				'(orientation: portrait)'
+			),
+			array(
+				"media='(max-width: 640px)'",
+				'(max-width: 640px)'
+			),
+			array(
+				"media='print and (min-width: 25cm)'",
+				'print and (min-width: 25cm)'
+			),
+			array(
+				"media='screen and (color), projection and (color)'",
+				'screen and (color), projection and (color)'
+			),
+			array(
+				"media='not screen and (color)'",
+				'not screen and (color)'
+			),
+		);
+	}
 }

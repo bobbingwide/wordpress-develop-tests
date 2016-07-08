@@ -6,18 +6,37 @@
  * @group post
  */
 class Tests_Post extends WP_UnitTestCase {
-	function setUp() {
-		parent::setUp();
-		$this->author_id = $this->factory->user->create( array( 'role' => 'editor' ) );
-		$this->old_current_user = get_current_user_id();
-		wp_set_current_user( $this->author_id );
-		_set_cron_array(array());
-		$this->post_ids = array();
+	protected static $editor_id;
+	protected static $grammarian_id;
+
+	public static function wpSetUpBeforeClass( $factory ) {
+		self::$editor_id = $factory->user->create( array( 'role' => 'editor' ) );
+
+		add_role( 'grammarian', 'Grammarian', array(
+			'read'                 => true,
+			'edit_posts'           => true,
+			'edit_others_posts'    => true,
+			'edit_published_posts' => true,
+		) );
+
+		self::$grammarian_id = $factory->user->create( array( 'role' => 'grammarian' ) );
 	}
 
-	function tearDown() {
-		wp_set_current_user( $this->old_current_user );
-		parent::tearDown();
+	public static function wpTearDownAfterClass() {
+		$ids = array( self::$editor_id, self::$grammarian_id );
+		foreach ( $ids as $id ) {
+			self::delete_user( $id );
+		}
+		remove_role( 'grammarian' );
+	}
+
+	function setUp() {
+		parent::setUp();
+
+		wp_set_current_user( self::$editor_id );
+		_set_cron_array( array() );
+
+		$this->post_ids = array();
 	}
 
 	// helper function: return the timestamp(s) of cron jobs for the specified hook and post
@@ -40,7 +59,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 		foreach ( $post_types as $post_type ) {
 			$post = array(
-				'post_author' => $this->author_id,
+				'post_author' => self::$editor_id,
 				'post_status' => 'publish',
 				'post_content' => rand_str(),
 				'post_title' => rand_str(),
@@ -94,7 +113,7 @@ class Tests_Post extends WP_UnitTestCase {
 		$future_date = strtotime('+1 day');
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'publish',
 			'post_content' => rand_str(),
 			'post_title' => rand_str(),
@@ -129,7 +148,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'publish',
 			'post_content' => rand_str(),
 			'post_title' => rand_str(),
@@ -171,7 +190,7 @@ class Tests_Post extends WP_UnitTestCase {
 		$future_date_2 = strtotime('+2 day');
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'publish',
 			'post_content' => rand_str(),
 			'post_title' => rand_str(),
@@ -211,7 +230,7 @@ class Tests_Post extends WP_UnitTestCase {
 		$future_date = strtotime('+1 day');
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'draft',
 			'post_content' => rand_str(),
 			'post_title' => rand_str(),
@@ -243,7 +262,7 @@ class Tests_Post extends WP_UnitTestCase {
 		$future_date_1 = strtotime('+1 day');
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'publish',
 			'post_content' => rand_str(),
 			'post_title' => rand_str(),
@@ -284,7 +303,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 		foreach ($statuses as $status) {
 			$post = array(
-				'post_author' => $this->author_id,
+				'post_author' => self::$editor_id,
 				'post_status' => 'publish',
 				'post_content' => rand_str(),
 				'post_title' => rand_str(),
@@ -324,7 +343,7 @@ class Tests_Post extends WP_UnitTestCase {
 		$future_date = strtotime('+1 day');
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'private',
 			'post_content' => rand_str(),
 			'post_title' => rand_str(),
@@ -357,7 +376,7 @@ class Tests_Post extends WP_UnitTestCase {
 		// insert a post with an invalid date, make sure it fails
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'public',
 			'post_content' => rand_str(),
 			'post_title' => rand_str(),
@@ -378,7 +397,7 @@ class Tests_Post extends WP_UnitTestCase {
 		$future_date_1 = strtotime('+1 day');
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'publish',
 			'post_content' => rand_str(),
 			'post_title' => rand_str(),
@@ -412,6 +431,63 @@ class Tests_Post extends WP_UnitTestCase {
 	}
 
 	/**
+	 * @ticket 5305
+	 */
+	public function test_wp_insert_post_should_not_allow_a_bare_numeric_slug_that_might_conflict_with_a_date_archive_when_generating_from_an_empty_post_title() {
+		$this->set_permalink_structure( '/%postname%/' );
+
+		$p = wp_insert_post( array(
+			'post_title' => '',
+			'post_content' => 'test',
+			'post_status' => 'publish',
+			'post_type' => 'post',
+		) );
+
+		$post = get_post( $p );
+
+		$this->set_permalink_structure();
+
+		$this->assertEquals( "$p-2", $post->post_name );
+	}
+
+	/**
+	 * @ticket 5305
+	 * @ticket 33392
+	 */
+	public function test_wp_insert_post_should_invalidate_post_cache_before_generating_guid_when_post_name_is_empty_and_is_generated_from_the_post_ID(){
+		register_post_type( 'wptests_pt' );
+
+		$p = wp_insert_post( array(
+			'post_title' => '',
+			'post_type' => 'wptests_pt',
+			'post_status' => 'publish',
+		) );
+
+		$post = get_post( $p );
+
+		$this->assertContains( 'wptests_pt=' . $p, $post->guid );
+	}
+
+	/**
+	 * @ticket 20451
+	 */
+	public function test_wp_insert_post_with_meta_input() {
+		$post_id = wp_insert_post( array(
+			'post_title'   => '',
+			'post_content' => 'test',
+			'post_status'  => 'publish',
+			'post_type'    => 'post',
+			'meta_input'   => array(
+				'hello' => 'world',
+				'foo'   => 'bar'
+			)
+		) );
+
+		$this->assertEquals( 'world', get_post_meta( $post_id, 'hello', true ) );
+		$this->assertEquals( 'bar', get_post_meta( $post_id, 'foo', true ) );
+	}
+
+	/**
 	 * @ticket 5364
 	 */
 	function test_delete_future_post_cron() {
@@ -419,7 +495,7 @@ class Tests_Post extends WP_UnitTestCase {
 		$future_date = strtotime('+1 day');
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'publish',
 			'post_content' => rand_str(),
 			'post_title' => rand_str(),
@@ -433,7 +509,7 @@ class Tests_Post extends WP_UnitTestCase {
 		$this->assertEquals($future_date, $this->_next_schedule_for_post('publish_future_post', $id));
 
 		// now delete the post and make sure the cron entry is removed
-		wp_delete_post($id);
+		wp_delete_post( $id );
 
 		$this->assertFalse($this->_next_schedule_for_post('publish_future_post', $id));
 	}
@@ -445,11 +521,10 @@ class Tests_Post extends WP_UnitTestCase {
 		// bug: permalink doesn't work if post title is empty
 		// might only fail if the post ID is greater than four characters
 
-		global $wp_rewrite;
-		$wp_rewrite->set_permalink_structure('/%year%/%monthnum%/%day%/%postname%/');
+		$this->set_permalink_structure('/%year%/%monthnum%/%day%/%postname%/');
 
 		$post = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'publish',
 			'post_content' => rand_str(),
 			'post_title' => '',
@@ -463,48 +538,22 @@ class Tests_Post extends WP_UnitTestCase {
 
 		// permalink should include the post ID at the end
 		$this->assertEquals(get_option('siteurl').'/2007/10/31/'.$id.'/', $plink);
-
-		$wp_rewrite->set_permalink_structure('');
-	}
-
-	/**
-	 * @ticket 21013
-	 */
-	function test_wp_unique_post_slug_with_non_latin_slugs() {
-		$inputs = array(
-			'Αρνάκι άσπρο και παχύ της μάνας του καμάρι, και άλλα τραγούδια',
-			'Предлагаем супер металлообрабатывающее оборудование',
-		);
-
-		$outputs = array(
-			'αρνάκι-άσπρο-και-παχύ-της-μάνας-του-κα-2',
-			'предлагаем-супер-металлообрабатыва-2',
-		);
-
-		foreach ( $inputs as $k => $post_title ) {
-			for ( $i = 0; $i < 2; $i++ ) {
-				$post = array(
-					'post_author' => $this->author_id,
-					'post_status' => 'publish',
-					'post_content' => rand_str(),
-					'post_title' => $post_title,
-				);
-
-				$id = $this->post_ids[] = wp_insert_post( $post );
-			}
-
-			$post = get_post( $id );
-			$this->assertEquals( $outputs[$k], urldecode( $post->post_name ) );
-		}
 	}
 
 	/**
 	 * @ticket 15665
 	 */
 	function test_get_page_by_path_priority() {
-		$attachment = $this->factory->post->create_and_get( array( 'post_title' => 'some-page', 'post_type' => 'attachment' ) );
-		$page       = $this->factory->post->create_and_get( array( 'post_title' => 'some-page', 'post_type' => 'page' ) );
-		$other_att  = $this->factory->post->create_and_get( array( 'post_title' => 'some-other-page', 'post_type' => 'attachment' ) );
+		global $wpdb;
+
+		$attachment = self::factory()->post->create_and_get( array( 'post_title' => 'some-page', 'post_type' => 'attachment' ) );
+		$page       = self::factory()->post->create_and_get( array( 'post_title' => 'some-page', 'post_type' => 'page' ) );
+		$other_att  = self::factory()->post->create_and_get( array( 'post_title' => 'some-other-page', 'post_type' => 'attachment' ) );
+
+		$wpdb->update( $wpdb->posts, array( 'post_name' => 'some-page' ), array( 'ID' => $page->ID ) );
+		clean_post_cache( $page->ID );
+
+		$page = get_post( $page->ID );
 
 		$this->assertEquals( 'some-page', $attachment->post_name );
 		$this->assertEquals( 'some-page', $page->post_name );
@@ -517,7 +566,7 @@ class Tests_Post extends WP_UnitTestCase {
 	}
 
 	function test_wp_publish_post() {
-		$draft_id = $this->factory->post->create( array( 'post_status' => 'draft' ) );
+		$draft_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
 
 		$post = get_post( $draft_id );
 		$this->assertEquals( 'draft', $post->post_status );
@@ -533,7 +582,7 @@ class Tests_Post extends WP_UnitTestCase {
 	 */
 	function test_wp_insert_post_and_wp_publish_post_with_future_date() {
 		$future_date = gmdate( 'Y-m-d H:i:s', time() + 10000000 );
-		$post_id = $this->factory->post->create( array(
+		$post_id = self::factory()->post->create( array(
 			'post_status' => 'publish',
 			'post_date' => $future_date,
 		) );
@@ -593,7 +642,7 @@ class Tests_Post extends WP_UnitTestCase {
 	 * @ticket 22883
 	 */
 	function test_get_page_uri_with_stdclass_post_object() {
-		$post_id    = $this->factory->post->create( array( 'post_name' => 'get-page-uri-post-name' ) );
+		$post_id    = self::factory()->post->create( array( 'post_name' => 'get-page-uri-post-name' ) );
 
 		// Mimick an old stdClass post object, missing the ancestors field.
 		$post_array = (object) get_post( $post_id, ARRAY_A );
@@ -613,12 +662,30 @@ class Tests_Post extends WP_UnitTestCase {
 	}
 
 	/**
+	 * @ticket 15963
+	 */
+	function test_get_post_uri_check_orphan() {
+		$parent_id = self::factory()->post->create( array( 'post_name' => 'parent' ) );
+		$child_id = self::factory()->post->create( array( 'post_name' => 'child', 'post_parent' => $parent_id ) );
+
+		// check the parent for good measure
+		$this->assertEquals( 'parent', get_page_uri( $parent_id ) );
+
+		// try the child normally
+		$this->assertEquals( 'parent/child', get_page_uri( $child_id ) );
+
+		// now delete the parent from the database and check
+		wp_delete_post( $parent_id, true );
+		$this->assertEquals( 'child', get_page_uri( $child_id ) );
+	}
+
+	/**
 	 * @ticket 23708
 	 */
 	function test_get_post_ancestors_within_loop() {
 		global $post;
-		$parent_id = $this->factory->post->create();
-		$post = $this->factory->post->create_and_get( array( 'post_parent' => $parent_id ) );
+		$parent_id = self::factory()->post->create();
+		$post = self::factory()->post->create_and_get( array( 'post_parent' => $parent_id ) );
 		$this->assertEquals( array( $parent_id ), get_post_ancestors( 0 ) );
 	}
 
@@ -626,7 +693,7 @@ class Tests_Post extends WP_UnitTestCase {
 	 * @ticket 23474
 	 */
 	function test_update_invalid_post_id() {
-		$post_id = $this->factory->post->create( array( 'post_name' => 'get-page-uri-post-name' ) );
+		$post_id = self::factory()->post->create( array( 'post_name' => 'get-page-uri-post-name' ) );
 		$post = get_post( $post_id, ARRAY_A );
 
 		$post['ID'] = 123456789;
@@ -641,7 +708,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 	function test_parse_post_content_single_page() {
 		global $multipage, $pages, $numpages;
-		$post_id = $this->factory->post->create( array( 'post_content' => 'Page 0' ) );
+		$post_id = self::factory()->post->create( array( 'post_content' => 'Page 0' ) );
 		$post = get_post( $post_id );
 		setup_postdata( $post );
 		$this->assertEquals( 0, $multipage );
@@ -652,7 +719,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 	function test_parse_post_content_multi_page() {
 		global $multipage, $pages, $numpages;
-		$post_id = $this->factory->post->create( array( 'post_content' => 'Page 0<!--nextpage-->Page 1<!--nextpage-->Page 2<!--nextpage-->Page 3' ) );
+		$post_id = self::factory()->post->create( array( 'post_content' => 'Page 0<!--nextpage-->Page 1<!--nextpage-->Page 2<!--nextpage-->Page 3' ) );
 		$post = get_post( $post_id );
 		setup_postdata( $post );
 		$this->assertEquals( 1, $multipage );
@@ -663,7 +730,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 	function test_parse_post_content_remaining_single_page() {
 		global $multipage, $pages, $numpages;
-		$post_id = $this->factory->post->create( array( 'post_content' => 'Page 0' ) );
+		$post_id = self::factory()->post->create( array( 'post_content' => 'Page 0' ) );
 		$post = get_post( $post_id );
 		setup_postdata( $post );
 		$this->assertEquals( 0, $multipage );
@@ -674,7 +741,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 	function test_parse_post_content_remaining_multi_page() {
 		global $multipage, $pages, $numpages;
-		$post_id = $this->factory->post->create( array( 'post_content' => 'Page 0<!--nextpage-->Page 1<!--nextpage-->Page 2<!--nextpage-->Page 3' ) );
+		$post_id = self::factory()->post->create( array( 'post_content' => 'Page 0<!--nextpage-->Page 1<!--nextpage-->Page 2<!--nextpage-->Page 3' ) );
 		$post = get_post( $post_id );
 		setup_postdata( $post );
 		$this->assertEquals( 1, $multipage );
@@ -688,7 +755,7 @@ class Tests_Post extends WP_UnitTestCase {
 	 */
 	function test_parse_post_content_starting_with_nextpage() {
 		global $multipage, $pages, $numpages;
-		$post_id = $this->factory->post->create( array( 'post_content' => '<!--nextpage-->Page 0<!--nextpage-->Page 1<!--nextpage-->Page 2<!--nextpage-->Page 3' ) );
+		$post_id = self::factory()->post->create( array( 'post_content' => '<!--nextpage-->Page 0<!--nextpage-->Page 1<!--nextpage-->Page 2<!--nextpage-->Page 3' ) );
 		$post = get_post( $post_id );
 		setup_postdata( $post );
 		$this->assertEquals( 1, $multipage );
@@ -702,7 +769,7 @@ class Tests_Post extends WP_UnitTestCase {
 	 */
 	function test_parse_post_content_starting_with_nextpage_multi() {
 		global $multipage, $pages, $numpages;
-		$post_id = $this->factory->post->create( array( 'post_content' => '<!--nextpage-->Page 0' ) );
+		$post_id = self::factory()->post->create( array( 'post_content' => '<!--nextpage-->Page 0' ) );
 		$post = get_post( $post_id );
 		setup_postdata( $post );
 		$this->assertEquals( 0, $multipage );
@@ -721,7 +788,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 		$title = rand_str();
 		$post_data = array(
-			'post_author' => $this->author_id,
+			'post_author' => self::$editor_id,
 			'post_status' => 'public',
 			'post_content' => rand_str(),
 			'post_title' => $title,
@@ -733,63 +800,8 @@ class Tests_Post extends WP_UnitTestCase {
 		$this->assertTrue( ( is_int($insert_post_id) && $insert_post_id > 0 ) );
 
 		$post = get_post( $insert_post_id );
-		$this->assertEquals( $post->post_author, $this->author_id );
+		$this->assertEquals( $post->post_author, self::$editor_id );
 		$this->assertEquals( $post->post_title, $title );
-	}
-
-	/**
-	 * @ticket 19373
-	 */
-	function test_insert_programmatic_without_current_user_success() {
-		$this->_unset_current_user();
-
-		register_taxonomy( 'test_tax', 'post' );
-
-		$title = rand_str();
-		$post_data = array(
-			'post_author' => $this->author_id,
-			'post_status' => 'public',
-			'post_content' => rand_str(),
-			'post_title' => $title,
-			'tax_input' => array(
-				'test_tax' => array( 'term', 'term2', 'term3' )
-			)
-		);
-		// with sanitize set to false
-		$insert_post_id = wp_insert_post( $post_data, true, false );
-
-		$post = get_post( $insert_post_id );
-		$this->assertEquals( $post->post_author, $this->author_id );
-		$this->assertEquals( $post->post_title, $title );
-
-		$terms = wp_get_object_terms( $insert_post_id, 'test_tax' );
-		$this->assertTrue( ( is_array( $terms ) && count( $terms ) == 3 ) );
-	}
-
-	/**
-	 * @ticket 19373
-	 */
-	function test_insert_programmatic_without_current_user_fail() {
-		$this->_unset_current_user();
-
-		register_taxonomy( 'test_tax', 'post' );
-
-		$title = rand_str();
-		$post_data = array(
-			// post_author not set
-			'post_status' => 'public',
-			'post_content' => rand_str(),
-			'post_title' => $title,
-			'tax_input' => array(
-				'test_tax' => array( 'term', 'term2', 'term3' )
-			)
-		);
-		// with sanitize set to false
-		$insert_post_id = wp_insert_post( $post_data, true, false );
-
-		// should error because no default user exists and no post author is passed in
-		$this->assertInstanceOf( 'WP_Error', $insert_post_id );
-		$this->assertEquals( 'empty_author', $insert_post_id->get_error_code() );
 	}
 
 	/**
@@ -798,9 +810,9 @@ class Tests_Post extends WP_UnitTestCase {
 	function test_wp_count_posts() {
 		$post_type = rand_str(20);
 		register_post_type( $post_type );
-		$this->factory->post->create( array(
+		self::factory()->post->create( array(
 			'post_type' => $post_type,
-			'post_author' => $this->author_id
+			'post_author' => self::$editor_id
 		) );
 		$count = wp_count_posts( $post_type, 'readable' );
 		$this->assertEquals( 1, $count->publish );
@@ -811,27 +823,27 @@ class Tests_Post extends WP_UnitTestCase {
 	function test_wp_count_posts_filtered() {
 		$post_type = rand_str(20);
 		register_post_type( $post_type );
-		$this->factory->post->create_many( 10, array(
+		self::factory()->post->create_many( 3, array(
 			'post_type' => $post_type,
-			'post_author' => $this->author_id
+			'post_author' => self::$editor_id
 		) );
 		$count1 = wp_count_posts( $post_type, 'readable' );
-		$this->assertEquals( 10, $count1->publish );
+		$this->assertEquals( 3, $count1->publish );
 		add_filter( 'wp_count_posts', array( $this, 'filter_wp_count_posts' ) );
 
 		$count2 = wp_count_posts( $post_type, 'readable' );
-		$this->assertEquals( 7, $count2->publish );
+		$this->assertEquals( 2, $count2->publish );
 
 		remove_filter( 'wp_count_posts', array( $this, 'filter_wp_count_posts' ) );
 	}
 
 	function filter_wp_count_posts( $counts ) {
-		$counts->publish = 7;
+		$counts->publish = 2;
 		return $counts;
 	}
 
 	function test_wp_count_posts_insert_invalidation() {
-		$post_ids = $this->factory->post->create_many( 10 );
+		$post_ids = self::factory()->post->create_many( 3 );
 		$initial_counts = wp_count_posts();
 
 		$key = array_rand( $post_ids );
@@ -844,12 +856,12 @@ class Tests_Post extends WP_UnitTestCase {
 
 		$after_draft_counts = wp_count_posts();
 		$this->assertEquals( 1, $after_draft_counts->draft );
-		$this->assertEquals( 9, $after_draft_counts->publish );
+		$this->assertEquals( 2, $after_draft_counts->publish );
 		$this->assertNotEquals( $initial_counts->publish, $after_draft_counts->publish );
 	}
 
 	function test_wp_count_posts_trash_invalidation() {
-		$post_ids = $this->factory->post->create_many( 10 );
+		$post_ids = self::factory()->post->create_many( 3 );
 		$initial_counts = wp_count_posts();
 
 		$key = array_rand( $post_ids );
@@ -862,7 +874,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 		$after_trash_counts = wp_count_posts();
 		$this->assertEquals( 1, $after_trash_counts->trash );
-		$this->assertEquals( 9, $after_trash_counts->publish );
+		$this->assertEquals( 2, $after_trash_counts->publish );
 		$this->assertNotEquals( $initial_counts->publish, $after_trash_counts->publish );
 	}
 
@@ -870,7 +882,7 @@ class Tests_Post extends WP_UnitTestCase {
 	 * @ticket 13771
 	 */
 	function test_get_the_date_with_id_returns_correct_time() {
-		$post_id = $this->factory->post->create( array( 'post_date' => '2014-03-01 16:35:00' ) );
+		$post_id = self::factory()->post->create( array( 'post_date' => '2014-03-01 16:35:00' ) );
 		$this->assertEquals( 'March 1, 2014', get_the_date( 'F j, Y', $post_id ) );
 	}
 
@@ -888,7 +900,7 @@ class Tests_Post extends WP_UnitTestCase {
 	 * @ticket 28310
 	 */
 	function test_get_the_time_with_id_returns_correct_time() {
-		$post_id = $this->factory->post->create( array( 'post_date' => '2014-03-01 16:35:00' ) );
+		$post_id = self::factory()->post->create( array( 'post_date' => '2014-03-01 16:35:00' ) );
 		$this->assertEquals( '16:35:00', get_the_time( 'H:i:s', $post_id ) );
 	}
 
@@ -906,7 +918,7 @@ class Tests_Post extends WP_UnitTestCase {
 	 * @ticket 28310
 	 */
 	function test_get_post_time_with_id_returns_correct_time() {
-		$post_id = $this->factory->post->create( array( 'post_date' => '2014-03-01 16:35:00' ) );
+		$post_id = self::factory()->post->create( array( 'post_date' => '2014-03-01 16:35:00' ) );
 		$this->assertEquals( '16:35:00', get_post_time( 'H:i:s', false, $post_id ) );
 	}
 
@@ -924,7 +936,7 @@ class Tests_Post extends WP_UnitTestCase {
 	 * @ticket 28310
 	 */
 	function test_get_post_modified_time_with_id_returns_correct_time() {
-		$post_id = $this->factory->post->create( array( 'post_date' => '2014-03-01 16:35:00' ) );
+		$post_id = self::factory()->post->create( array( 'post_date' => '2014-03-01 16:35:00' ) );
 		$this->assertEquals( '16:35:00', get_post_modified_time( 'H:i:s', false, $post_id ) );
 	}
 
@@ -962,7 +974,7 @@ class Tests_Post extends WP_UnitTestCase {
 		register_post_type( $post_type, array( 'taxonomies' => array( 'post_tag', $tax ) ) );
 		register_taxonomy( $tax, $post_type );
 
-		$post = $this->factory->post->create( array( 'post_type' => $post_type ) );
+		$post = self::factory()->post->create( array( 'post_type' => $post_type ) );
 		wp_set_object_terms( $post, rand_str(), $tax );
 
 		$wp_tag_cloud = wp_tag_cloud( array(
@@ -972,49 +984,16 @@ class Tests_Post extends WP_UnitTestCase {
 			'link' => 'edit'
 		) );
 
+		preg_match_all( "|href='([^']+)'|", $wp_tag_cloud, $matches );
+		$this->assertSame( 1, count( $matches[1] ) );
+
 		$terms = get_terms( $tax );
 		$term = reset( $terms );
-		$url = sprintf( '%s?action=edit&#038;taxonomy=%s&#038;tag_ID=%d&#038;post_type=%s',
-			admin_url( 'edit-tags.php' ),
-			$tax,
-			$term->term_id,
-			$post_type
-		);
-		$expected_wp_tag_cloud = sprintf( "<a href='%s' class='tag-link-%d' title='1 topic' style='font-size: 8pt;'>%s</a>",
-			$url,
-			$term->term_id,
-			$term->name
-		);
-		$this->assertEquals( $expected_wp_tag_cloud, $wp_tag_cloud );
 
-		_unregister_post_type( $post_type );
-		_unregister_taxonomy( $tax );
-	}
-
-	/**
-	 * @ticket 18962
-	 */
-	function test_wp_unique_post_slug_with_multiple_hierarchies() {
-		register_post_type( 'post-type-1', array( 'hierarchical' => true ) );
-		register_post_type( 'post-type-2', array( 'hierarchical' => true ) );
-
-		$args = array(
-			'post_type' => 'post-type-1',
-			'post_name' => 'some-slug',
-			'post_status' => 'publish',
-		);
-		$one = $this->factory->post->create( $args );
-		$args['post_type'] = 'post-type-2';
-		$two = $this->factory->post->create( $args );
-
-		$this->assertEquals( 'some-slug', get_post( $one )->post_name );
-		$this->assertEquals( 'some-slug', get_post( $two )->post_name );
-
-		$this->assertEquals( 'some-other-slug', wp_unique_post_slug( 'some-other-slug', $one, 'publish', 'post-type-1', 0 ) );
-		$this->assertEquals( 'some-other-slug', wp_unique_post_slug( 'some-other-slug', $one, 'publish', 'post-type-2', 0 ) );
-
-		_unregister_post_type( 'post-type-1' );
-		_unregister_post_type( 'post-type-2' );
+		foreach ( $matches[1] as $url ) {
+			$this->assertContains( 'tag_ID=' . $term->term_id, $url );
+			$this->assertContains( 'post_type=new_post_type', $url );
+		}
 	}
 
 	/**
@@ -1030,7 +1009,7 @@ class Tests_Post extends WP_UnitTestCase {
 
 		require_once( ABSPATH . '/wp-admin/includes/post.php' );
 
-		$post_id = $this->factory->post->create();
+		$post_id = self::factory()->post->create();
 
 		$data = array(
 			'post_ID'      => $post_id,
@@ -1040,9 +1019,9 @@ class Tests_Post extends WP_UnitTestCase {
 		);
 
 		$expected = array(
-			'post_title'   => "foobar",
-			'post_content' => "foobaz",
-			'post_excerpt' => "foobat"
+			'post_title'   => "foo&#x1f608;bar",
+			'post_content' => "foo&#x1f60e;baz",
+			'post_excerpt' => "foo&#x1f610;bat"
 		);
 
 		edit_post( $data );
@@ -1050,7 +1029,260 @@ class Tests_Post extends WP_UnitTestCase {
 		$post = get_post( $post_id );
 
 		foreach( $expected as $field => $value ) {
-			$this->assertEquals( $post->$field, $value );
+			$this->assertEquals( $value, $post->$field );
 		}
 	}
+
+	/**
+	 * @ticket 31168
+	 */
+	function test_wp_insert_post_default_comment_ping_status_open() {
+		$post_id = self::factory()->post->create( array(
+			'post_author' => self::$editor_id,
+			'post_status' => 'public',
+			'post_content' => rand_str(),
+			'post_title' => rand_str(),
+		) );
+		$post = get_post( $post_id );
+
+		$this->assertEquals( 'open', $post->comment_status );
+		$this->assertEquals( 'open', $post->ping_status );
+	}
+
+	/**
+	 * @ticket 31168
+	 */
+	function test_wp_insert_post_page_default_comment_ping_status_closed() {
+		$post_id = self::factory()->post->create( array(
+			'post_author' => self::$editor_id,
+			'post_status' => 'public',
+			'post_content' => rand_str(),
+			'post_title' => rand_str(),
+			'post_type' => 'page',
+		) );
+		$post = get_post( $post_id );
+
+		$this->assertEquals( 'closed', $post->comment_status );
+		$this->assertEquals( 'closed', $post->ping_status );
+	}
+
+	/**
+	 * @ticket 31168
+	 */
+	function test_wp_insert_post_cpt_default_comment_ping_status_open() {
+		$post_type = rand_str(20);
+		register_post_type( $post_type, array( 'supports' => array( 'comments', 'trackbacks' ) ) );
+		$post_id = self::factory()->post->create( array(
+			'post_author' => self::$editor_id,
+			'post_status' => 'public',
+			'post_content' => rand_str(),
+			'post_title' => rand_str(),
+			'post_type' => $post_type,
+		) );
+		$post = get_post( $post_id );
+
+		$this->assertEquals( 'open', $post->comment_status );
+		$this->assertEquals( 'open', $post->ping_status );
+		_unregister_post_type( $post_type );
+	}
+
+	/**
+	 * @ticket 31168
+	 */
+	function test_wp_insert_post_cpt_default_comment_ping_status_closed() {
+		$post_type = rand_str(20);
+		register_post_type( $post_type );
+		$post_id = self::factory()->post->create( array(
+			'post_author' => self::$editor_id,
+			'post_status' => 'public',
+			'post_content' => rand_str(),
+			'post_title' => rand_str(),
+			'post_type' => $post_type,
+		) );
+		$post = get_post( $post_id );
+
+		$this->assertEquals( 'closed', $post->comment_status );
+		$this->assertEquals( 'closed', $post->ping_status );
+		_unregister_post_type( $post_type );
+	}
+
+	/**
+	 * If a post is sticky and is updated by a user that does not have the publish_post capability, it should _stay_
+	 * sticky.
+	 *
+	 * @ticket 24153
+	 */
+	function test_user_without_publish_cannot_affect_sticky() {
+		wp_set_current_user( self::$grammarian_id );
+
+		// Sanity Check.
+		$this->assertFalse( current_user_can( 'publish_posts' ) );
+		$this->assertTrue( current_user_can( 'edit_others_posts' ) );
+		$this->assertTrue( current_user_can( 'edit_published_posts' ) );
+
+		// Create a sticky post.
+		$post = self::factory()->post->create_and_get( array(
+			'post_title'   => 'Will be changed',
+			'post_content' => 'Will be changed',
+		) );
+		stick_post( $post->ID );
+
+		// Sanity Check.
+		$this->assertTrue( is_sticky( $post->ID ) );
+
+		// Edit the post.
+		$post->post_title = 'Updated';
+		$post->post_content = 'Updated';
+		wp_update_post( $post );
+
+		// Make sure it's still sticky.
+		$saved_post = get_post( $post->ID );
+		$this->assertTrue( is_sticky( $saved_post->ID ) );
+		$this->assertEquals( 'Updated', $saved_post->post_title );
+		$this->assertEquals( 'Updated', $saved_post->post_content );
+	}
+
+	/**
+	 * If the `edit_post()` method is invoked by a user without publish_posts permission, the sticky status of the post
+	 * should not be changed.
+	 *
+	 * @ticket 24153
+	 */
+	function test_user_without_publish_cannot_affect_sticky_with_edit_post() {
+		// Create a sticky post.
+		$post = self::factory()->post->create_and_get( array(
+			'post_title'   => 'Will be changed',
+			'post_content' => 'Will be changed',
+		) );
+		stick_post( $post->ID );
+
+		// Sanity Check.
+		$this->assertTrue( is_sticky( $post->ID ) );
+
+		wp_set_current_user( self::$grammarian_id );
+
+		// Sanity Check.
+		$this->assertFalse( current_user_can( 'publish_posts' ) );
+		$this->assertTrue( current_user_can( 'edit_others_posts' ) );
+		$this->assertTrue( current_user_can( 'edit_published_posts' ) );
+
+		// Edit the post - The key 'sticky' is intentionally unset.
+		$data = array(
+			'post_ID'      => $post->ID,
+			'post_title'   => 'Updated',
+			'post_content' => 'Updated',
+		);
+		edit_post( $data );
+
+		// Make sure it's still sticky
+		$saved_post = get_post( $post->ID );
+		$this->assertTrue( is_sticky( $saved_post->ID ) );
+		$this->assertEquals( 'Updated', $saved_post->post_title );
+		$this->assertEquals( 'Updated', $saved_post->post_content );
+	}
+
+	/**
+	 * Test that hooks are fired when post gets stuck and unstuck.
+	 *
+	 * @ticket 35600
+	 */
+	function test_hooks_fire_when_post_gets_stuck_and_unstuck() {
+		$post_id = self::factory()->post->create();
+		$a1 = new MockAction();
+		$a2 = new MockAction();
+
+		$this->assertFalse( is_sticky( $post_id ) );
+
+		add_action( 'post_stuck', array( $a1, 'action' ) );
+		add_action( 'post_unstuck', array( $a2, 'action' ) );
+
+		stick_post( $post_id );
+		$this->assertTrue( is_sticky( $post_id ) );
+		unstick_post( $post_id );
+		$this->assertFalse( is_sticky( $post_id ) );
+
+		remove_action( 'post_stuck', array( $a1, 'action' ) );
+		remove_action( 'post_unstuck', array( $a2, 'action' ) );
+
+		$this->assertEquals( 1, $a1->get_call_count() );
+		$this->assertEquals( 1, $a2->get_call_count() );
+	}
+
+	/**
+	 * If a post is updated without providing a post_name param,
+	 * a new slug should not be generated.
+	 *
+	 * @ticket 34865
+	 */
+	function test_post_updates_without_slug_provided() {
+		$post_id = self::factory()->post->create( array(
+			'post_title'   => 'Stuff',
+			'post_status'  => 'publish'
+		) );
+
+		$data = array(
+			'ID'         => $post_id,
+			'post_title' => 'Stuff and Things'
+		);
+
+		wp_insert_post( $data );
+
+		$updated_post = get_post( $post_id );
+		// Ensure changing the post_title didn't modify the post_name.
+		$this->assertEquals('stuff', $updated_post->post_name);
+	}
+
+	/**
+	 * @ticket 32585
+	 */
+	public function test_wp_insert_post_author_zero() {
+		$post_id = self::factory()->post->create( array( 'post_author' => 0 ) );
+
+		$this->assertEquals( 0, get_post( $post_id )->post_author );
+	}
+
+	/**
+	 * @ticket 32585
+	 */
+	public function test_wp_insert_post_author_null() {
+		$post_id = self::factory()->post->create( array( 'post_author' => null ) );
+
+		$this->assertEquals( self::$editor_id, get_post( $post_id )->post_author );
+	}
+
+	/**
+	 * @ticket 15946
+	 */
+	function test_wp_insert_post_should_respect_post_date_gmt() {
+		$post = array(
+			'post_author' => self::$editor_id,
+			'post_status' => 'publish',
+			'post_content' => rand_str(),
+			'post_title' => rand_str(),
+			'post_date_gmt' => '2014-01-01 12:00:00',
+		);
+
+		// insert a post and make sure the ID is ok
+		$id = wp_insert_post($post);
+
+		$out = get_post($id);
+
+		$this->assertEquals($post['post_content'], $out->post_content);
+		$this->assertEquals($post['post_title'], $out->post_title);
+		$this->assertEquals($post['post_author'], $out->post_author);
+		$this->assertEquals(get_date_from_gmt($post['post_date_gmt']), $out->post_date);
+		$this->assertEquals($post['post_date_gmt'], $out->post_date_gmt);
+	}
+
+	function test_wp_delete_post_reassign_hierarchical_post_type() {
+		$grandparent_page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		$parent_page_id = self::factory()->post->create( array( 'post_type' => 'page', 'post_parent' => $grandparent_page_id ) );
+		$page_id = self::factory()->post->create( array( 'post_type' => 'page', 'post_parent' => $parent_page_id ) );
+		$this->assertEquals( $parent_page_id, get_post( $page_id )->post_parent );
+		wp_delete_post( $parent_page_id, true );
+		$this->assertEquals( $grandparent_page_id, get_post( $page_id )->post_parent );
+		wp_delete_post( $grandparent_page_id, true );
+		$this->assertEquals( 0, get_post( $page_id )->post_parent );
+	}
+
 }

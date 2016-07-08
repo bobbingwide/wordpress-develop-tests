@@ -282,9 +282,9 @@ class Tests_Image_Editor_Imagick extends WP_Image_UnitTestCase {
 
 			// #0
 			array(
-				'file'      => 'waffles-10x6.jpg',
+				'file'      => 'waffles-10x7.jpg',
 				'width'     => 10,
-				'height'    => 6,
+				'height'    => 7,
 				'mime-type' => 'image/jpeg',
 			),
 
@@ -322,16 +322,16 @@ class Tests_Image_Editor_Imagick extends WP_Image_UnitTestCase {
 
 			// #5
 			array(
-				'file'      => 'waffles-55x36.jpg',
+				'file'      => 'waffles-55x37.jpg',
 				'width'     => 55,
-				'height'    => 36,
+				'height'    => 37,
 				'mime-type' => 'image/jpeg',
 			),
 
 			// #6
 			array(
-				'file'      => 'waffles-82x55.jpg',
-				'width'     => 82,
+				'file'      => 'waffles-83x55.jpg',
+				'width'     => 83,
 				'height'    => 55,
 				'mime-type' => 'image/jpeg',
 			),
@@ -462,7 +462,7 @@ class Tests_Image_Editor_Imagick extends WP_Image_UnitTestCase {
 	public function test_image_preserves_alpha_on_resize() {
 		$file = DIR_TESTDATA . '/images/transparent.png';
 
-		$editor = wp_get_image_editor( $file );
+		$editor = new WP_Image_Editor_Imagick( $file );
 
 		$this->assertNotInstanceOf( 'WP_Error', $editor );
 		
@@ -472,7 +472,11 @@ class Tests_Image_Editor_Imagick extends WP_Image_UnitTestCase {
 
 		$editor->save( $save_to_file );
 
-		$this->assertImageAlphaAtPoint( $save_to_file, array( 0,0 ), 127 );
+		$im = new Imagick( $save_to_file );
+		$pixel = $im->getImagePixelColor( 0, 0 );
+		$expected = $pixel->getColorValue( imagick::COLOR_ALPHA );
+
+		$this->assertImageAlphaAtPointImagick( $save_to_file, array( 0,0 ), $expected );
 
 		unlink( $save_to_file );
 	}
@@ -485,7 +489,7 @@ class Tests_Image_Editor_Imagick extends WP_Image_UnitTestCase {
 	public function test_image_preserves_alpha() {
 		$file = DIR_TESTDATA . '/images/transparent.png';
 
-		$editor = wp_get_image_editor( $file );
+		$editor = new WP_Image_Editor_Imagick( $file );
 
 		$this->assertNotInstanceOf( 'WP_Error', $editor );
 
@@ -495,8 +499,36 @@ class Tests_Image_Editor_Imagick extends WP_Image_UnitTestCase {
 
 		$editor->save( $save_to_file );
 
-		$this->assertImageAlphaAtPoint( $save_to_file, array( 0,0 ), 127 );
+		$im = new Imagick( $save_to_file );
+		$pixel = $im->getImagePixelColor( 0, 0 );
+		$expected = $pixel->getColorValue( imagick::COLOR_ALPHA );
 
+		$this->assertImageAlphaAtPointImagick( $save_to_file, array( 0,0 ), $expected );
+
+		unlink( $save_to_file );
+	}
+
+	/**
+	 *
+	 * @ticket 30596
+	 */
+	public function test_image_preserves_alpha_on_rotate() {
+		$file = DIR_TESTDATA . '/images/transparent.png';
+
+		$pre_rotate_editor = new Imagick( $file );
+		$pre_rotate_pixel = $pre_rotate_editor->getImagePixelColor( 0, 0 );
+		$pre_rotate_alpha = $pre_rotate_pixel->getColorValue( imagick::COLOR_ALPHA );
+		$save_to_file = tempnam( get_temp_dir(),'' ) . '.png';
+		$pre_rotate_editor->writeImage( $save_to_file );
+		$pre_rotate_editor->destroy();
+
+		$image_editor = new WP_Image_Editor_Imagick( $save_to_file );
+		$image_editor->load();
+		$this->assertNotInstanceOf( 'WP_Error', $image_editor );
+		$image_editor->rotate( 180 );
+		$image_editor->save( $save_to_file );
+
+		$this->assertImageAlphaAtPointImagick( $save_to_file, array( 0, 0 ), $pre_rotate_alpha );
 		unlink( $save_to_file );
 	}
 }

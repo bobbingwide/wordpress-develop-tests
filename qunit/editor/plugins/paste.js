@@ -7,8 +7,7 @@ module("tinymce.plugins.Paste", {
 			add_unload_trigger: false,
 			skin: false,
 			indent: false,
-			plugins: wpPlugins,
-			wp_paste_filters: false,
+			plugins: 'paste',
 			setup: function(ed) {
 				ed.on('NodeChange', false);
 			},
@@ -52,7 +51,7 @@ test("Paste styled text content", function() {
 	editor.selection.setRng(rng);
 
 	editor.execCommand('mceInsertClipboardContent', false, {content: '<strong><em><span style="color: red;">TEST</span></em></strong>'});
-	equal(editor.getContent(), '<p>1<strong><em><span style="color: red;">TEST</span></em></strong>4</p>'); // Changed in WordPress
+	equal(editor.getContent(), '<p>1<strong><em><span style="color: red;">TEST</span></em></strong>4</p>');
 });
 
 test("Paste paragraph in paragraph", function() {
@@ -151,6 +150,20 @@ test("Paste list like paragraph and list", function() {
 	equal(editor.getContent(), '<p>ABC. X</p><ol><li>Y</li></ol>');
 });
 
+test("Paste list like paragraph and list (disabled)", function() {
+	editor.setContent('');
+
+	editor.settings.paste_convert_word_fake_lists = false;
+
+	editor.execCommand('mceInsertClipboardContent', false, {
+		content: '<p class=MsoNormal><span style=\'font-size:10.0pt;line-height:115%;font-family:"Trebuchet MS","sans-serif";color:#666666\'>ABC. X<o:p></o:p></span></p><p class=MsoListParagraph style=\'text-indent:-.25in;mso-list:l0 level1 lfo1\'><![if !supportLists]><span style=\'mso-fareast-font-family:Calibri;mso-fareast-theme-font:minor-latin;mso-bidi-font-family:Calibri;mso-bidi-theme-font:minor-latin\'><span style=\'mso-list:Ignore\'>1.<span style=\'font:7.0pt "Times New Roman"\'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></span></span><![endif]>Y</p>'
+	});
+
+	delete editor.settings.paste_convert_word_fake_lists;
+
+	equal(editor.getContent(), '<p>ABC. X</p><p>1.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Y</p>');
+});
+
 test("Paste Word table", function() {
 	var rng = editor.dom.createRng();
 
@@ -175,7 +188,7 @@ test("Paste Office 365", function() {
 	equal(editor.getContent(), '<p>Test</p>');
 });
 
-test("Paste Google Docs", function() {
+test("Paste Google Docs 1", function() {
 	var rng = editor.dom.createRng();
 
 	editor.setContent('<p>1234</p>');
@@ -185,6 +198,28 @@ test("Paste Google Docs", function() {
 
 	editor.execCommand('mceInsertClipboardContent', false, {content: '<span id="docs-internal-guid-94e46f1a-1c88-b42b-d502-1d19da30dde7"></span><p dir="ltr>Test</p>'});
 	equal(editor.getContent(), '<p>Test</p>');
+});
+
+test("Paste Google Docs 2", function() {
+	var rng = editor.dom.createRng();
+
+	editor.setContent('<p>1234</p>');
+	rng.setStart(editor.getBody().firstChild.firstChild, 0);
+	rng.setEnd(editor.getBody().firstChild.firstChild, 4);
+	editor.selection.setRng(rng);
+
+	editor.execCommand('mceInsertClipboardContent', false, {
+		content: (
+			'<meta charset="utf-8">' +
+			'<b style="font-weight:normal;" id="docs-internal-guid-adeb6845-fec6-72e6-6831-5e3ce002727c">' +
+			'<p dir="ltr">a</p>' +
+			'<p dir="ltr">b</p>' +
+			'<p dir="ltr">c</p>' +
+			'</b>' +
+			'<br class="Apple-interchange-newline">'
+		)
+	});
+	equal(editor.getContent(), '<p>a</p><p>b</p><p>c</p>');
 });
 
 test("Paste Word without mso markings", function() {
@@ -275,7 +310,7 @@ test("Paste Word retain bold/italic styles to elements", function() {
 		)
 	});
 
-	equal(editor.getContent(), '<p><b>bold</b><i>italic</i><b><i>bold + italic</i></b><b><span style="color: red;">bold + color</span></b></p>');
+	equal(editor.getContent(), '<p><strong>bold</strong><em>italic</em><strong><em>bold + italic</em></strong><strong><span style="color: red;">bold + color</span></strong></p>');
 });
 
 test('paste track changes comment', function() {
@@ -315,7 +350,7 @@ test('paste nested (UL) word list', function() {
 
 	equal(
 		editor.getContent(),
-		'<ul>'+
+		'<ul>' +
 			'<li>a' +
 				'<ul>' +
 					'<li>b' +
@@ -355,7 +390,7 @@ test('paste nested (OL) word list', function() {
 
 	equal(
 		editor.getContent(),
-		'<ol>'+
+		'<ol>' +
 			'<li>a' +
 				'<ol>' +
 					'<li>b' +
@@ -383,7 +418,7 @@ test("Paste list start index", function() {
 		)
 	});
 	equal(editor.getContent(), '<ol start="10"><li>J</li></ol>');
-})
+});
 
 test("Paste paste_merge_formats: true", function() {
 	editor.settings.paste_merge_formats = true;
@@ -499,10 +534,10 @@ test('paste plain text with paragraphs', function() {
 test('paste data image with paste_data_images: false', function() {
 	editor.setContent('');
 
-	editor.execCommand('mceInsertClipboardContent', false, {content: '<img src="data:image/png;base64,...">'});
+	editor.execCommand('mceInsertClipboardContent', false, {content: '<img src="data:image/gif;base64,R0lGODlhAQABAPAAAP8REf///yH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==">'});
 	equal(editor.getContent(), '');
 
-	editor.execCommand('mceInsertClipboardContent', false, {content: '<img alt="alt" src="data:image/png;base64,...">'});
+	editor.execCommand('mceInsertClipboardContent', false, {content: '<img alt="alt" src="data:image/gif;base64,R0lGODlhAQABAPAAAP8REf///yH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==">'});
 	equal(editor.getContent(), '');
 });
 
@@ -510,9 +545,9 @@ test('paste data image with paste_data_images: true', function() {
 	editor.settings.paste_data_images = true;
 
 	editor.setContent('');
-	editor.execCommand('mceInsertClipboardContent', false, {content: '<img src="data:image/png;base64,...">'});
+	editor.execCommand('mceInsertClipboardContent', false, {content: '<img src="data:image/gif;base64,R0lGODlhAQABAPAAAP8REf///yH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==">'});
 
-	equal(editor.getContent(), '<p><img src="data:image/png;base64,..." alt="" /></p>');
+	equal(editor.getContent(), '<p><img src="data:image/gif;base64,R0lGODlhAQABAPAAAP8REf///yH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==" /></p>');
 });
 
 test('paste pre process text (event)', function() {
@@ -681,8 +716,8 @@ if (tinymce.Env.webkit) {
 	test('paste webkit remove runtime styles (font-family)', function() {
 		editor.settings.paste_webkit_styles = 'font-family';
 		editor.setContent('');
-		editor.execCommand('mceInsertClipboardContent', false, {content: '<span style="font-family: Arial, Helvetica; text-indent: 10px">Test</span>'});
-		equal(editor.getContent(), '<p><span style="font-family: Arial, Helvetica;">Test</span></p>');
+		editor.execCommand('mceInsertClipboardContent', false, {content: '<span style="font-family:Arial; text-indent: 10px">Test</span>'});
+		equal(editor.getContent(), '<p><span style="font-family: Arial;">Test</span></p>');
 	});
 
 	test('paste webkit remove runtime styles font-family allowed but not specified', function() {

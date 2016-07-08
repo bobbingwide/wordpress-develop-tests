@@ -4,7 +4,7 @@
  * @group cache
  */
 class Tests_Cache extends WP_UnitTestCase {
-	var $cache = NULL;
+	var $cache = null;
 
 	function setUp() {
 		parent::setUp();
@@ -14,12 +14,14 @@ class Tests_Cache extends WP_UnitTestCase {
 	}
 
 	function tearDown() {
-		parent::tearDown();
 		$this->flush_cache();
+		parent::tearDown();
 	}
 
 	function &init_cache() {
-		$cache = new WP_Object_Cache();
+		global $wp_object_cache;
+		$cache_class = get_class( $wp_object_cache );
+		$cache = new $cache_class();
 		$cache->add_global_groups( array( 'global-cache-test', 'users', 'userlogins', 'usermeta', 'user_meta', 'site-transient', 'site-options', 'site-lookup', 'blog-lookup', 'blog-details', 'rss', 'global-posts', 'blog-id-cache' ) );
 		return $cache;
 	}
@@ -178,7 +180,7 @@ class Tests_Cache extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @group 21327
+	 * @ticket 21327
 	 */
 	function test_wp_cache_decr() {
 		$key = rand_str();
@@ -281,7 +283,13 @@ class Tests_Cache extends WP_UnitTestCase {
 		wp_cache_init();
 
 		global $wp_object_cache;
-		$this->assertEquals( $wp_object_cache, $new_blank_cache_object );
+
+		if ( wp_using_ext_object_cache() ) {
+			// External caches will contain property values that contain non-matching resource IDs
+			$this->assertInstanceOf( 'WP_Object_Cache', $wp_object_cache  );
+		} else {
+			$this->assertEquals( $wp_object_cache, $new_blank_cache_object );
+		}
 	}
 
 	function test_wp_cache_replace() {

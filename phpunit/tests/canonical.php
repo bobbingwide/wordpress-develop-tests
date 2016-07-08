@@ -9,11 +9,11 @@
  * @group query
  */
 class Tests_Canonical extends WP_Canonical_UnitTestCase {
-	public static function setUpBeforeClass() {
-		self::generate_shared_fixtures();
+	public static function wpSetUpBeforeClass( $factory ) {
+		self::generate_shared_fixtures( $factory );
 	}
 
-	public static function tearDownAfterClass() {
+	public static function wpTearDownAfterClass() {
 		self::delete_shared_fixtures();
 	}
 
@@ -22,15 +22,10 @@ class Tests_Canonical extends WP_Canonical_UnitTestCase {
 		wp_set_current_user( self::$author_id );
 	}
 
-	public function tearDown() {
-		parent::tearDown();
-		wp_set_current_user( self::$old_current_user );
-	}
-
 	/**
-	 * @dataProvider data
+	 * @dataProvider data_canonical
 	 */
-	function test( $test_url, $expected, $ticket = 0, $expected_doing_it_wrong = array() ) {
+	function test_canonical( $test_url, $expected, $ticket = 0, $expected_doing_it_wrong = array() ) {
 
 		if ( false !== strpos( $test_url, '%d' ) ) {
 			if ( false !== strpos( $test_url, '/?author=%d' ) )
@@ -42,17 +37,18 @@ class Tests_Canonical extends WP_Canonical_UnitTestCase {
 		$this->assertCanonical( $test_url, $expected, $ticket, $expected_doing_it_wrong );
 	}
 
-	function data() {
+	function data_canonical() {
 		/* Data format:
-		 * [0]: $test_url,
+		 * [0]: Test URL.
 		 * [1]: expected results: Any of the following can be used
 		 *      array( 'url': expected redirection location, 'qv': expected query vars to be set via the rewrite AND $_GET );
 		 *      array( expected query vars to be set, same as 'qv' above )
 		 *      (string) expected redirect location
 		 * [2]: (optional) The ticket the test refers to, Can be skipped if unknown.
+		 * [3]: (optional) Array of class/function names expected to throw `_doing_it_wrong()` notices.
 		 */
 
-		// Please Note: A few test cases are commented out below, Look at the test case following it, in most cases it's simple showing 2 options for the "proper" redirect.
+		// Please Note: A few test cases are commented out below, Look at the test case following it, in most cases it's simply showing 2 options for the "proper" redirect.
 		return array(
 			// Categories
 
@@ -79,6 +75,8 @@ class Tests_Canonical extends WP_Canonical_UnitTestCase {
 			array( '/child-page-1/', '/parent-page/child-page-1/'),
 			array( '/?page_id=144', '/parent-page/child-page-1/'),
 			array( '/abo', '/about/' ),
+			array( '/parent/child1/grandchild/', '/parent/child1/grandchild/' ),
+			array( '/parent/child2/grandchild/', '/parent/child2/grandchild/' ),
 
 			// Posts
 			array( '?p=587', '/2008/06/02/post-format-test-audio/'),
@@ -94,7 +92,7 @@ class Tests_Canonical extends WP_Canonical_UnitTestCase {
 			array( '/2010/post-format-test-au/', '/2008/06/02/post-format-test-audio/'), // A Year the post is not in
 			array( '/post-format-test-au/', '/2008/06/02/post-format-test-audio/'),
 
-			array( '/2008/09/03/images-test/3/', array( 'url' => '/2008/09/03/images-test/3/', 'qv' => array( 'name' => 'images-test', 'year' => '2008', 'monthnum' => '09', 'day' => '03', 'page' => '/3' ) ) ), // page = /3 ?!
+			array( '/2008/09/03/images-test/3/', array( 'url' => '/2008/09/03/images-test/3/', 'qv' => array( 'name' => 'images-test', 'year' => '2008', 'monthnum' => '09', 'day' => '03', 'page' => '3' ) ) ),
 			array( '/2008/09/03/images-test/?page=3', '/2008/09/03/images-test/3/' ),
 			array( '/2008/09/03/images-te?page=3', '/2008/09/03/images-test/3/' ),
 

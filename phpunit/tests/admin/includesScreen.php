@@ -2,6 +2,7 @@
 
 /**
  * @group admin
+ * @group adminScreen
  */
 class Tests_Admin_includesScreen extends WP_UnitTestCase {
 	var $core_screens = array(
@@ -37,9 +38,9 @@ class Tests_Admin_includesScreen extends WP_UnitTestCase {
 	}
 
 	function tearDown() {
-		parent::tearDown();
 		unset( $GLOBALS['wp_taxonomies']['old-or-new'] );
-		set_current_screen( 'front' );
+		unset( $GLOBALS['screen'] );
+		parent::tearDown();
 	}
 
 	function test_set_current_screen_with_hook_suffix() {
@@ -163,7 +164,13 @@ class Tests_Admin_includesScreen extends WP_UnitTestCase {
 
 		$screen = get_current_screen();
 		$screen->add_help_tab( $tab_args );
-		$this->assertEquals( $screen->get_help_tab( $tab ), $tab_args );
+		$this->assertEquals( $screen->get_help_tab( $tab ), array(
+			'id' => $tab,
+			'title' => 'Help!',
+			'content' => 'Some content',
+			'callback' => false,
+			'priority' => 10,
+		) );
 
 		$tabs = $screen->get_help_tabs();
 		$this->assertArrayHasKey( $tab, $tabs );
@@ -173,6 +180,98 @@ class Tests_Admin_includesScreen extends WP_UnitTestCase {
 
 		$screen->remove_help_tabs();
 		$this->assertEquals( $screen->get_help_tabs(), array() );
+	}
+
+	/**
+	 * @ticket 19828
+	 */
+	function test_help_tabs_priority() {
+		$tab_1      = rand_str();
+		$tab_1_args = array(
+			'title'    => 'Help!',
+			'id'       => $tab_1,
+			'content'  => 'Some content',
+			'callback' => false,
+			'priority' => 10,
+		);
+
+		$tab_2      = rand_str();
+		$tab_2_args = array(
+			'title'    => 'Help!',
+			'id'       => $tab_2,
+			'content'  => 'Some content',
+			'callback' => false,
+			'priority' => 2,
+		);
+		$tab_3      = rand_str();
+		$tab_3_args = array(
+			'title'    => 'help!',
+			'id'       => $tab_3,
+			'content'  => 'some content',
+			'callback' => false,
+			'priority' => 40,
+		);
+		$tab_4      = rand_str();
+		$tab_4_args = array(
+			'title'    => 'help!',
+			'id'       => $tab_4,
+			'content'  => 'some content',
+			'callback' => false,
+			// Don't include a priority
+		);
+
+		$screen = get_current_screen();
+
+		// add help tabs.
+
+		$screen->add_help_tab( $tab_1_args );
+		$this->assertequals( $screen->get_help_tab( $tab_1 ), $tab_1_args );
+
+		$screen->add_help_tab( $tab_2_args );
+		$this->assertEquals( $screen->get_help_tab( $tab_2 ), $tab_2_args );
+
+		$screen->add_help_tab( $tab_3_args );
+		$this->assertEquals( $screen->get_help_tab( $tab_3 ), $tab_3_args );
+
+		$screen->add_help_tab( $tab_4_args );
+		// Priority is added with the default for future calls
+		$tab_4_args[ 'priority' ] = 10;
+		$this->assertEquals( $screen->get_help_tab( $tab_4 ), $tab_4_args );
+
+		$tabs = $screen->get_help_tabs();
+		$this->assertEquals( 4, count( $tabs ) );
+		$this->assertArrayHasKey( $tab_1, $tabs );
+		$this->assertArrayHasKey( $tab_2, $tabs );
+		$this->assertArrayHasKey( $tab_3, $tabs );
+		$this->assertArrayHasKey( $tab_4, $tabs );
+
+		// Test priority order.
+
+		$this->assertSame( array(
+			$tab_2 => $tab_2_args,
+			$tab_1 => $tab_1_args,
+			$tab_4 => $tab_4_args,
+			$tab_3 => $tab_3_args,
+		), $tabs );
+
+		$screen->remove_help_tab( $tab_1 );
+		$this->assertNull( $screen->get_help_tab( $tab_1 ) );
+		$this->assertSame( 3, count( $screen->get_help_tabs() ) );
+
+		$screen->remove_help_tab( $tab_2 );
+		$this->assertNull( $screen->get_help_tab( $tab_2 ) );
+		$this->assertSame( 2, count( $screen->get_help_tabs() ) );
+
+		$screen->remove_help_tab( $tab_3 );
+		$this->assertNull( $screen->get_help_tab( $tab_3 ) );
+		$this->assertSame( 1, count( $screen->get_help_tabs() ) );
+
+		$screen->remove_help_tab( $tab_4 );
+		$this->assertNull( $screen->get_help_tab( $tab_4 ) );
+		$this->assertSame( 0, count( $screen->get_help_tabs() ) );
+
+		$screen->remove_help_tabs();
+		$this->assertEquals( array(), $screen->get_help_tabs() );
 	}
 
 	/**

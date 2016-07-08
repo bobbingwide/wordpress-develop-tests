@@ -8,15 +8,25 @@ $defaults = array(
 );
 */
 class Tests_Get_Archives extends WP_UnitTestCase {
-	protected $post_ids;
+	protected static $post_ids;
 	protected $month_url;
+	protected $year_url;
 
 	function setUp() {
 		parent::setUp();
 
 		$this->month_url = get_month_link( date( 'Y' ), date( 'm' ) );
 		$this->year_url = get_year_link( date( 'Y' ) );
-		$this->post_ids = $this->factory->post->create_many( 8, array( 'post_type' => 'post', 'post_author' => '1' ) );
+	}
+
+	public static function wpSetUpBeforeClass( $factory ) {
+		self::$post_ids = $factory->post->create_many( 8, array( 'post_type' => 'post', 'post_author' => '1' ) );
+	}
+
+	public static function wpTearDownAfterClass() {
+		foreach ( self::$post_ids as $post_id ) {
+			wp_delete_post( $post_id, true );
+		}
 	}
 
 	function test_wp_get_archives_default() {
@@ -30,7 +40,7 @@ class Tests_Get_Archives extends WP_UnitTestCase {
 	}
 
 	function test_wp_get_archives_limit() {
-		$ids = array_slice( array_reverse( $this->post_ids ), 0, 5 );
+		$ids = array_slice( array_reverse( self::$post_ids ), 0, 5 );
 
 		$link1 = get_permalink( $ids[0] );
 		$link2 = get_permalink( $ids[1] );
@@ -38,12 +48,18 @@ class Tests_Get_Archives extends WP_UnitTestCase {
 		$link4 = get_permalink( $ids[3] );
 		$link5 = get_permalink( $ids[4] );
 
+		$title1 = get_post( $ids[0] )->post_title;
+		$title2 = get_post( $ids[1] )->post_title;
+		$title3 = get_post( $ids[2] )->post_title;
+		$title4 = get_post( $ids[3] )->post_title;
+		$title5 = get_post( $ids[4] )->post_title;
+
 		$expected['limit'] = <<<EOF
-<li><a href='$link1'>Post title 8</a></li>
-	<li><a href='$link2'>Post title 7</a></li>
-	<li><a href='$link3'>Post title 6</a></li>
-	<li><a href='$link4'>Post title 5</a></li>
-	<li><a href='$link5'>Post title 4</a></li>
+<li><a href='$link1'>$title1</a></li>
+	<li><a href='$link2'>$title2</a></li>
+	<li><a href='$link3'>$title3</a></li>
+	<li><a href='$link4'>$title4</a></li>
+	<li><a href='$link5'>$title5</a></li>
 EOF;
 		$this->assertEquals( $expected['limit'], trim( wp_get_archives( array( 'echo' => false, 'type' => 'postbypost', 'limit' => 5 ) ) ) );
 	}
@@ -72,7 +88,7 @@ EOF;
 	}
 
 	function test_wp_get_archives_order() {
-		$this->factory->post->create( array( 'post_type' => 'post', 'post_author' => '1', 'post_date' => '2012-10-23 19:34:42' ) );
+		self::factory()->post->create( array( 'post_type' => 'post', 'post_author' => '1', 'post_date' => '2012-10-23 19:34:42' ) );
 
 		$date_full = date( 'F Y' );
 		$oct_url = get_month_link( 2012, 10 );
@@ -87,5 +103,23 @@ EOF;
 	<li><a href='{$oct_url}'>October 2012</a></li>
 EOF;
 		$this->assertEquals( $expected['order_desc'], trim( wp_get_archives( array( 'echo' => false, 'order' => 'DESC' ) ) ) );
+	}
+
+	/**
+	 * @ticket 21596
+	 */
+	function test_wp_get_archives_post_type() {
+		register_post_type( 'taco', array( 'public' => true ) );
+
+		self::factory()->post->create( array(
+			'post_type' => 'taco',
+			'post_author' => '1',
+			'post_date' => '2014-10-23 19:34:42'
+		) );
+
+		$oct_url = esc_url( add_query_arg( 'post_type', 'taco', get_month_link( 2014, 10 ) ) );
+		$expected = "<li><a href='{$oct_url}'>October 2014</a></li>";
+		$archives = wp_get_archives( array( 'echo' => false, 'post_type' => 'taco' ) );
+		$this->assertEquals( $expected, trim( $archives ) );
 	}
 }

@@ -6,12 +6,26 @@
  * @ticket 21767
  */
 class Tests_Meta_Slashes extends WP_UnitTestCase {
+	protected static $editor_id;
+	protected static $post_id;
+	protected static $comment_id;
+
+	public static function wpSetUpBeforeClass( $factory ) {
+		self::$editor_id = $factory->user->create( array( 'role' => 'editor' ) );
+		self::$post_id = $factory->post->create();
+		self::$comment_id = $factory->comment->create( array( 'comment_post_ID' => self::$post_id ) );
+	}
+
+	public static function wpTearDownAfterClass() {
+		self::delete_user( self::$editor_id );
+		wp_delete_comment( self::$comment_id, true );
+		wp_delete_post( self::$post_id, true );
+	}
+
 	function setUp() {
 		parent::setUp();
-		$this->author_id = $this->factory->user->create( array( 'role' => 'editor' ) );
-		$this->post_id = $this->factory->post->create();
-		$this->old_current_user = get_current_user_id();
-		wp_set_current_user( $this->author_id );
+
+		wp_set_current_user( self::$editor_id );
 
 		$this->slash_1 = 'String with 1 slash \\';
 		$this->slash_2 = 'String with 2 slashes \\\\';
@@ -22,17 +36,12 @@ class Tests_Meta_Slashes extends WP_UnitTestCase {
 		$this->slash_7 = 'String with 7 slashes \\\\\\\\\\\\\\';
 	}
 
-	function tearDown() {
-		wp_set_current_user( $this->old_current_user );
-		parent::tearDown();
-	}
-
 	/**
 	 * Tests the controller function that expects slashed data
 	 *
 	 */
 	function test_edit_post() {
-		$id = $this->factory->post->create();
+		$id = self::factory()->post->create();
 		if ( function_exists( 'wp_add_post_meta' ) ) {
 			$meta_1 = wp_add_post_meta( $id, 'slash_test_1', 'foo' );
 			$meta_2 = wp_add_post_meta( $id, 'slash_test_2', 'foo' );
@@ -108,7 +117,7 @@ class Tests_Meta_Slashes extends WP_UnitTestCase {
 	 *
 	 */
 	function test_add_post_meta() {
-		$id = $this->factory->post->create();
+		$id = self::factory()->post->create();
 		add_post_meta( $id, 'slash_test_1', addslashes( $this->slash_1 ) );
 		add_post_meta( $id, 'slash_test_2', addslashes( $this->slash_3 ) );
 		add_post_meta( $id, 'slash_test_3', addslashes( $this->slash_4 ) );
@@ -123,46 +132,10 @@ class Tests_Meta_Slashes extends WP_UnitTestCase {
 	 *
 	 */
 	function test_update_post_meta() {
-		$id = $this->factory->post->create();
+		$id = self::factory()->post->create();
 		update_post_meta( $id, 'slash_test_1', addslashes( $this->slash_1 ) );
 		update_post_meta( $id, 'slash_test_2', addslashes( $this->slash_3 ) );
 		update_post_meta( $id, 'slash_test_3', addslashes( $this->slash_4 ) );
-
-		$this->assertEquals( $this->slash_1, get_post_meta( $id, 'slash_test_1', true ) );
-		$this->assertEquals( $this->slash_3, get_post_meta( $id, 'slash_test_2', true ) );
-		$this->assertEquals( $this->slash_4, get_post_meta( $id, 'slash_test_3', true ) );
-	}
-
-	/**
-	 * Tests the model function that expects un-slashed data
-	 *
-	 */
-	function test_wp_add_post_meta() {
-		if ( !function_exists( 'wp_add_post_meta' ) ) {
-			return;
-		}
-		$id = $this->factory->post->create();
-		wp_add_post_meta( $id, 'slash_test_1', $this->slash_1 );
-		wp_add_post_meta( $id, 'slash_test_2', $this->slash_3 );
-		wp_add_post_meta( $id, 'slash_test_3', $this->slash_4 );
-
-		$this->assertEquals( $this->slash_1, get_post_meta( $id, 'slash_test_1', true ) );
-		$this->assertEquals( $this->slash_3, get_post_meta( $id, 'slash_test_2', true ) );
-		$this->assertEquals( $this->slash_4, get_post_meta( $id, 'slash_test_3', true ) );
-	}
-
-	/**
-	 * Tests the model function that expects un-slashed data
-	 *
-	 */
-	function test_wp_update_post_meta() {
-		if ( !function_exists( 'wp_update_post_meta' ) ) {
-			return;
-		}
-		$id = $this->factory->post->create();
-		wp_update_post_meta( $id, 'slash_test_1', $this->slash_1 );
-		wp_update_post_meta( $id, 'slash_test_2', $this->slash_3 );
-		wp_update_post_meta( $id, 'slash_test_3', $this->slash_4 );
 
 		$this->assertEquals( $this->slash_1, get_post_meta( $id, 'slash_test_1', true ) );
 		$this->assertEquals( $this->slash_3, get_post_meta( $id, 'slash_test_2', true ) );
@@ -174,7 +147,7 @@ class Tests_Meta_Slashes extends WP_UnitTestCase {
 	 *
 	 */
 	function test_add_comment_meta() {
-		$id = $this->factory->comment->create( array( 'comment_post_ID' => $this->post_id ) );
+		$id = self::$comment_id;
 
 		add_comment_meta( $id, 'slash_test_1', $this->slash_1 );
 		add_comment_meta( $id, 'slash_test_2', $this->slash_3 );
@@ -198,7 +171,7 @@ class Tests_Meta_Slashes extends WP_UnitTestCase {
 	 *
 	 */
 	function test_update_comment_meta() {
-		$id = $this->factory->comment->create( array( 'comment_post_ID' => $this->post_id ) );
+		$id = self::$comment_id;
 
 		add_comment_meta( $id, 'slash_test_1', 'foo' );
 		add_comment_meta( $id, 'slash_test_2', 'foo' );
@@ -226,7 +199,7 @@ class Tests_Meta_Slashes extends WP_UnitTestCase {
 	 *
 	 */
 	function test_add_user_meta() {
-		$id = $this->factory->user->create();
+		$id = self::factory()->user->create();
 
 		add_user_meta( $id, 'slash_test_1', $this->slash_1 );
 		add_user_meta( $id, 'slash_test_2', $this->slash_3 );
@@ -250,7 +223,7 @@ class Tests_Meta_Slashes extends WP_UnitTestCase {
 	 *
 	 */
 	function test_update_user_meta() {
-		$id = $this->factory->user->create();
+		$id = self::factory()->user->create();
 
 		add_user_meta( $id, 'slash_test_1', 'foo' );
 		add_user_meta( $id, 'slash_test_2', 'foo' );
@@ -272,5 +245,4 @@ class Tests_Meta_Slashes extends WP_UnitTestCase {
 		$this->assertEquals( wp_unslash( $this->slash_4 ), get_user_meta( $id, 'slash_test_2', true ) );
 		$this->assertEquals( wp_unslash( $this->slash_6 ), get_user_meta( $id, 'slash_test_3', true ) );
 	}
-
 }
