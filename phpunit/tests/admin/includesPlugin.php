@@ -56,26 +56,6 @@ class Tests_Admin_includesPlugin extends WP_UnitTestCase {
 
 		wp_set_current_user( $current_user );
 	}
-/*
-
-  function test_user_can_access_admin_page() {
-    $post_type_args = array(); 
-    $post_type_args['capability_type'] = 'oik_site';
-    $post_type_args['capabilities'] = array( 'create_posts' => 'create_oik_sites' );
-    $post_type_args['map_meta_cap'] = true;
-    register_post_type( "oik_site", $post_type_args );
-    
-		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
-    
-    
-		update_option( 'siteurl', 'http://example.com' );
-    $this->go_to( "http://example.com/wp-admin/edit.php?post_type=oik_site" );
-    $value = user_can_access_admin_page();
-      //$value = false;
-    $this->assertEquals( true, $value );
-
-  }
-*/
 
 	function test_is_plugin_active_true() {
 		activate_plugin( 'hello.php' );

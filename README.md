@@ -2,9 +2,9 @@
 * Contributors: bobbingwide
 * Donate link: http://www.oik-plugins.com/oik/oik-donate/
 * Tags: PHPUnit, automated, testing
-* Requires at least: 4.0
-* Tested up to: 4.1-beta1
-* Stable tag: 4.0
+* Requires at least: 4.5.3
+* Tested up to: 4.6-beta2
+* Stable tag: 4.5.3
 * License: GPLv2 or later
 * License URI: http://www.gnu.org/licenses/gpl-2.0.html
 * Text Domain: default
@@ -61,6 +61,9 @@ No, I'm in the process of building the API reference as I write this readme.txt
 1. None
 
 ## Upgrade Notice 
+# 4.5.3 
+Built from an SVN extract of trunk taken 2016/07/07
+
 # 4.1-beta1 
 Built from an update performed on 20 Nov 2014
 
@@ -68,6 +71,10 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 ## Changelog 
+# 4.5.3 
+* Changed: source files updated to latest extract taken on 2016/07/07
+* Changed: readme should reflect the new build process
+
 # 4.1-beta1 
 * Changed: See SVN repository for the change log of the tests
 

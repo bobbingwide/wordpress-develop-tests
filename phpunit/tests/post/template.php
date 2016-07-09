@@ -77,64 +77,18 @@ class Tests_Post_Template extends WP_UnitTestCase {
 	}
 
 	function test_wp_dropdown_pages() {
-		//$none = wp_dropdown_pages( array( 'echo' => 0 ) );
-		//$this->assertEmpty( $none );
+		$none = wp_dropdown_pages( array( 'echo' => 0 ) );
+		$this->assertEmpty( $none );
 
 		$bump = '&nbsp;&nbsp;&nbsp;';
-<<<<<<< .mine
-		$page_id = $this->factory->post->create( array( 'post_type' => 'page' ) );
-    //echo "page:" . $page_id;
-		$child_id = $this->factory->post->create( array( 'post_type' => 'page', 'post_parent' => $page_id ) );
-    
-    //echo "child" .$child_id;
-    //print_r( $this->factory );
-    
-		$grandchild_id = $this->factory->post->create( array( 'post_type' => 'page', 'post_parent' => $child_id ) );
-=======
 		$page_id = self::factory()->post->create( array( 'post_type' => 'page' ) );
 		$child_id = self::factory()->post->create( array( 'post_type' => 'page', 'post_parent' => $page_id ) );
 		$grandchild_id = self::factory()->post->create( array( 'post_type' => 'page', 'post_parent' => $child_id ) );
->>>>>>> .r35263
-    
-    //echo "gradd:" . $grandchild_id;
-    
-    //print_r( $this->factory );
-    
-	$defaults = array(
-		'depth' => 0, 'child_of' => 0,
-		'selected' => 0, 'echo' => 1,
-		'name' => 'page_id', 'id' => '',
-		'show_option_none' => '', 'show_option_no_change' => '',
-		'option_none_value' => ''
-	);
-  $args = array();
 
-<<<<<<< .mine
-	$r = wp_parse_args( $args, $defaults );
-  
-  //print_r( $r );
-
-	$pages = get_pages( $r );
-  //echo "Returned: " . count( $pages );
-  $ids = wp_list_pluck( $pages, "ID" );
-  //print_r( $ids );
-  $ids = wp_list_pluck( $pages, "post_parent" );
-  //print_r( $ids );
-    
-    //$pages = get_pages( array( 'parent' => 0, 'hierarchical' => false ) );
-		//$this->assertEquals( array( $page_id, $child_id, $grandchild_id, $grandchild_id ), wp_list_pluck( $pages, "ID" ) );
-    
-	//	$this->assertEquals( wp_list_pluck( $pages, "ID" ), array( $page_id, $child_id, $grandchild_id, $grandchild_id ));
-	//	$this->assertEquals( wp_list_pluck( $pages, "ID" ), array( $page_id, $child_id, $grandchild_id ));
-	//	$this->assertEquals( wp_list_pluck( $pages, "ID" ), array( $page_id => $page_id, $child_id => $child_id, $grandchild_id => $grandchild_id ) );
-    //$grandchild_id = 42;
-    
-=======
 		$title1 = get_post( $page_id )->post_title;
 		$title2 = get_post( $child_id )->post_title;
 		$title3 = get_post( $grandchild_id )->post_title;
 
->>>>>>> .r35263
 		$lineage =<<<LINEAGE
 <select name='page_id' id='page_id'>
 	<option class="level-0" value="$page_id">$title1</option>

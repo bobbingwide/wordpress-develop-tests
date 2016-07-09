@@ -2,9 +2,9 @@
 Contributors: bobbingwide
 Donate link: http://www.oik-plugins.com/oik/oik-donate/
 Tags: PHPUnit, automated, testing
-Requires at least: 4.0
-Tested up to: 4.1-beta1
-Stable tag: 4.0
+Requires at least: 4.5.3
+Tested up to: 4.6-beta2
+Stable tag: 4.5.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: default
@@ -21,11 +21,6 @@ Automated testing of WordPress involves running test cases where manual interven
 The purpose of this plugin is simply to allow WP-a2z to be run against it.
 Developers can then view the tests and navigate through them as if they were a real plugin.
 
-To get WP-A2z to work locally I simply created a symbolic link
-from the latest SVN version to a plugin directory
-
-cd wp-content/plugins
-mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 
 
 == Installation ==
@@ -55,12 +50,38 @@ this provides you with a dynamic reference of current tests.
 
 = Have you actually tried using this? =
 No, I'm in the process of building the API reference as I write this readme.txt
+
+
+= What's the process for managing this repo? =
+
+Original method: Nov 2014
+
+To get WP-A2z to work locally I simply created a symbolic link
+from the latest SVN version to a plugin directory
+
+cd wp-content/plugins
+mklink /J wordpress-develop-tests svn\wordpress-develop\tests
+
+Current method: Jul 2016
+
+This is the latest process used to build the API reference.
+
+- Extract http://develop.svn.wordpress.org/trunk to C:\svn\wordpress-develop
+- Copy files from the tests folder into a local GitHub repo of bobbingwide/wordpress-develop-tests
+- Commit and push to GitHub
+- Pull into the WP-a2z websites plugin directory
+- Build the dynamic API reference for the latest level
+
+
  
 
 == Screenshots ==
 1. None
 
 == Upgrade Notice ==
+= 4.5.3 = 
+Built from an SVN extract of trunk taken 2016/07/07
+
 = 4.1-beta1 =
 Built from an update performed on 20 Nov 2014
 
@@ -68,9 +89,14 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 == Changelog == 
+
+= 4.5.3 = 
+* Changed: source files updated to latest extract taken on 2016/07/07
+* Changed: readme should reflect the new build process
+* Fixed: Some files were corrupted with local changes 2016/07/09
+
 = 4.1-beta1 =
 * Changed: See SVN repository for the change log of the tests
-
 
 = 4.0 =
 * Added: New for develop.wp-a2z.org
