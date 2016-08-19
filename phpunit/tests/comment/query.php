@@ -64,8 +64,6 @@ class Tests_Comment_Query extends WP_UnitTestCase {
 			'fields' => 'ids',
 		) );
 
-		$this->assertEqualSets( array( $c1, $c2, $c3, $c4, $c5 ), $found );    // Herb
-		//$this->assertEquals( array( $c1, $c2, $c3, $c4, $c5 ), $found );    // Herb
 		$this->assertEqualSets( array( $c1, $c2, $c3, $c4, $c5 ), $found );
 	}
 

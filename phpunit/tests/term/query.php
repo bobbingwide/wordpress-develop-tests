@@ -5,6 +5,41 @@
  */
 class Tests_Term_Query extends WP_UnitTestCase {
 	/**
+	 * @ticket 37545
+	 */
+	public function test_taxonomy_should_accept_single_taxonomy_as_string() {
+		register_taxonomy( 'wptests_tax_1', 'post' );
+		register_taxonomy( 'wptests_tax_2', 'post' );
+
+		$term_1 = self::factory()->term->create( array( 'taxonomy' => 'wptests_tax_1' ) );
+		$term_2 = self::factory()->term->create( array( 'taxonomy' => 'wptests_tax_2' ) );
+
+		$q = new WP_Term_Query( array(
+			'taxonomy' => 'wptests_tax_2',
+			'fields' => 'ids',
+			'hide_empty' => false,
+		) );
+
+		$this->assertEqualSets( array( $term_2 ), $q->terms );
+	}
+
+	public function test_taxonomy_should_accept_taxonomy_array() {
+		register_taxonomy( 'wptests_tax_1', 'post' );
+		register_taxonomy( 'wptests_tax_2', 'post' );
+
+		$term_1 = self::factory()->term->create( array( 'taxonomy' => 'wptests_tax_1' ) );
+		$term_2 = self::factory()->term->create( array( 'taxonomy' => 'wptests_tax_2' ) );
+
+		$q = new WP_Term_Query( array(
+			'taxonomy' => array( 'wptests_tax_2' ),
+			'fields' => 'ids',
+			'hide_empty' => false,
+		) );
+
+		$this->assertEqualSets( array( $term_2 ), $q->terms );
+	}
+
+	/**
 	 * @ticket 37074
 	 */
 	public function test_term_taxonomy_id_single() {
@@ -84,5 +119,50 @@ class Tests_Term_Query extends WP_UnitTestCase {
 
 		$found = array_map( 'intval', $q->terms );
 		$this->assertSame( array( $terms[1], $terms[0], $terms[2] ), $found );
+	}
+
+	/**
+	 * @ticket 37378
+	 */
+	public function test_order_by_keyword_should_not_be_duplicated_when_filtered() {
+		register_taxonomy( 'wptests_tax', 'post' );
+
+		add_filter( 'terms_clauses', array( $this, 'filter_terms_clauses' ) );
+		$q = new WP_Term_Query( array(
+			'taxonomy' => array( 'wptests_tax' ),
+			'orderby' => 'name',
+		) );
+		remove_filter( 'terms_clauses', array( $this, 'filter_terms_clauses' ) );
+
+		$this->assertContains( 'ORDER BY tt.term_id', $q->request );
+		$this->assertNotContains( 'ORDER BY ORDER BY', $q->request );
+	}
+
+	public function filter_terms_clauses( $clauses ) {
+		$clauses['orderby'] = 'ORDER BY tt.term_id';
+		return $clauses;
+	}
+
+	/**
+	 * @ticket 37591
+	 */
+	public function test_terms_is_set() {
+		register_taxonomy( 'wptests_tax_1', 'post' );
+
+		self::factory()->term->create( array( 'taxonomy' => 'wptests_tax_1' ) );
+
+		$q1 = new WP_Term_Query( array(
+			'taxonomy' => 'wptests_tax_1',
+			'hide_empty' => false
+		) );
+
+		$this->assertNotEmpty( $q1->terms );
+
+		$q2 = new WP_Term_Query( array(
+			'taxonomy' => 'wptests_tax_1',
+			'hide_empty' => false
+		) );
+
+		$this->assertNotEmpty( $q2->terms );
 	}
 }

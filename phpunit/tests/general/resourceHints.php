@@ -31,7 +31,7 @@ class Tests_WP_Resource_Hints extends WP_UnitTestCase {
 	}
 
 	function test_should_have_defaults_on_frontend() {
-		$expected = "<link rel='preconnect' href='http://s.w.org'>\r\n";
+		$expected = "<link rel='dns-prefetch' href='//s.w.org'>\n";
 
 		$this->expectOutputString( $expected );
 
@@ -39,10 +39,10 @@ class Tests_WP_Resource_Hints extends WP_UnitTestCase {
 	}
 
 	function test_dns_prefetching() {
-		$expected = "<link rel='dns-prefetch' href='http://wordpress.org'>\r\n" .
-					"<link rel='dns-prefetch' href='https://google.com'>\r\n" .
-					"<link rel='dns-prefetch' href='make.wordpress.org'>\r\n" .
-					"<link rel='preconnect' href='http://s.w.org'>\r\n";
+		$expected = "<link rel='dns-prefetch' href='//s.w.org'>\n" .
+					"<link rel='dns-prefetch' href='//wordpress.org'>\n" .
+					"<link rel='dns-prefetch' href='//google.com'>\n" .
+					"<link rel='dns-prefetch' href='//make.wordpress.org'>\n";
 
 		add_filter( 'wp_resource_hints', array( $this, '_add_dns_prefetch_domains' ), 10, 2 );
 
@@ -56,18 +56,52 @@ class Tests_WP_Resource_Hints extends WP_UnitTestCase {
 	function _add_dns_prefetch_domains( $hints, $method ) {
 		if ( 'dns-prefetch' === $method ) {
 			$hints[] = 'http://wordpress.org';
+			$hints[] = 'https://wordpress.org';
+			$hints[] = 'htps://wordpress.org'; // Invalid URLs should be skipped.
 			$hints[] = 'https://google.com';
 			$hints[] = '//make.wordpress.org';
+			$hints[] = 'https://wordpress.org/plugins/';
+		}
+
+		return $hints;
+	}
+
+	/**
+	 * @ticket 37652
+	 */
+	function test_preconnect() {
+		$expected = "<link rel='dns-prefetch' href='//s.w.org'>\n" .
+		            "<link rel='preconnect' href='//wordpress.org'>\n" .
+		            "<link rel='preconnect' href='https://make.wordpress.org'>\n" .
+		            "<link rel='preconnect' href='http://google.com'>\n" .
+		            "<link rel='preconnect' href='http://w.org'>\n";
+
+		add_filter( 'wp_resource_hints', array( $this, '_add_preconnect_domains' ), 10, 2 );
+
+		$actual = get_echo( 'wp_resource_hints' );
+
+		remove_filter( 'wp_resource_hints', array( $this, '_add_preconnect_domains' ) );
+
+		$this->assertEquals( $expected, $actual );
+	}
+
+	function _add_preconnect_domains( $hints, $method ) {
+		if ( 'preconnect' === $method ) {
+			$hints[] = '//wordpress.org';
+			$hints[] = 'https://make.wordpress.org';
+			$hints[] = 'htps://example.com'; // Invalid URLs should be skipped.
+			$hints[] = 'http://google.com';
+			$hints[] = 'w.org';
 		}
 
 		return $hints;
 	}
 
 	function test_prerender() {
-		$expected = "<link rel='preconnect' href='http://s.w.org'>\r\n" .
-					"<link rel='prerender' href='https://make.wordpress.org/great-again'>\r\n" .
-					"<link rel='prerender' href='http://jobs.wordpress.net'>\r\n" .
-					"<link rel='prerender' href='//core.trac.wordpress.org'>\r\n";
+		$expected = "<link rel='dns-prefetch' href='//s.w.org'>\n" .
+					"<link rel='prerender' href='https://make.wordpress.org/great-again'>\n" .
+					"<link rel='prerender' href='http://jobs.wordpress.net'>\n" .
+					"<link rel='prerender' href='//core.trac.wordpress.org'>\n";
 
 		add_filter( 'wp_resource_hints', array( $this, '_add_prerender_urls' ), 10, 2 );
 
@@ -83,14 +117,15 @@ class Tests_WP_Resource_Hints extends WP_UnitTestCase {
 			$hints[] = 'https://make.wordpress.org/great-again';
 			$hints[] = 'http://jobs.wordpress.net';
 			$hints[] = '//core.trac.wordpress.org';
+			$hints[] = 'htps://wordpress.org'; // Invalid URLs should be skipped.
 		}
 
 		return $hints;
 	}
 
 	function test_parse_url_dns_prefetch() {
-		$expected = "<link rel='dns-prefetch' href='http://make.wordpress.org'>\r\n" .
-					"<link rel='preconnect' href='http://s.w.org'>\r\n";
+		$expected = "<link rel='dns-prefetch' href='//s.w.org'>\n" .
+					"<link rel='dns-prefetch' href='//make.wordpress.org'>\n";
 
 		add_filter( 'wp_resource_hints', array( $this, '_add_dns_prefetch_long_urls' ), 10, 2 );
 
@@ -110,8 +145,8 @@ class Tests_WP_Resource_Hints extends WP_UnitTestCase {
 	}
 
 	function test_dns_prefetch_styles() {
-		$expected = "<link rel='dns-prefetch' href='http://fonts.googleapis.com'>\r\n" .
-					"<link rel='preconnect' href='http://s.w.org'>\r\n";
+		$expected = "<link rel='dns-prefetch' href='//fonts.googleapis.com'>\n" .
+					"<link rel='dns-prefetch' href='//s.w.org'>\n";
 
 		$args = array(
 			'family' => 'Open+Sans:400',
@@ -129,8 +164,8 @@ class Tests_WP_Resource_Hints extends WP_UnitTestCase {
 	}
 
 	function test_dns_prefetch_scripts() {
-		$expected = "<link rel='dns-prefetch' href='http://fonts.googleapis.com'>\r\n" .
-					"<link rel='preconnect' href='http://s.w.org'>\r\n";
+		$expected = "<link rel='dns-prefetch' href='//fonts.googleapis.com'>\n" .
+					"<link rel='dns-prefetch' href='//s.w.org'>\n";
 
 		$args = array(
 			'family' => 'Open+Sans:400',
@@ -146,4 +181,65 @@ class Tests_WP_Resource_Hints extends WP_UnitTestCase {
 		$this->assertEquals( $expected, $actual );
 	}
 
+	function test_dns_prefetch_scripts_does_not_included_registered_only() {
+		$expected = "<link rel='dns-prefetch' href='//s.w.org'>\n";
+		$unexpected = "<link rel='dns-prefetch' href='//wordpress.org'>\n";
+
+		wp_register_script( 'jquery-elsewhere', 'https://wordpress.org/wp-includes/js/jquery/jquery.js' );
+
+		$actual = get_echo( 'wp_resource_hints' );
+
+		wp_deregister_script( 'jquery-elsewhere' );
+
+		$this->assertEquals( $expected, $actual );
+		$this->assertNotContains( $unexpected, $actual );
+	}
+
+	/**
+	 * @ticket 37502
+	 */
+	function test_deregistered_scripts_are_ignored() {
+		$expected = "<link rel='dns-prefetch' href='//s.w.org'>\n";
+
+		wp_enqueue_script( 'test-script', 'http://example.org/script.js' );
+		wp_deregister_script( 'test-script' );
+
+		$actual = get_echo( 'wp_resource_hints' );
+		$this->assertEquals( $expected, $actual );
+	}
+
+	/**
+	 * @ticket 37652
+	 */
+	function test_malformed_urls() {
+		$expected = "<link rel='dns-prefetch' href='//s.w.org'>\n";
+
+		// Errant colon.
+		add_filter( 'wp_resource_hints', array( $this, '_add_malformed_url_errant_colon' ), 10, 2 );
+		$actual = get_echo( 'wp_resource_hints' );
+		remove_filter( 'wp_resource_hints', array( $this, '_add_malformed_url_errant_colon' ) );
+		$this->assertEquals( $expected, $actual );
+
+		// Unsupported Scheme.
+		add_filter( 'wp_resource_hints', array( $this, '_add_malformed_url_unsupported_scheme' ), 10, 2 );
+		$actual = get_echo( 'wp_resource_hints' );
+		remove_filter( 'wp_resource_hints', array( $this, '_add_malformed_url_unsupported_scheme' ) );
+		$this->assertEquals( $expected, $actual );
+	}
+
+	function _add_malformed_url_errant_colon( $hints, $method ) {
+		if ( 'preconnect' === $method ) {
+			$hints[] = '://core.trac.wordpress.org/ticket/37652';
+		}
+
+		return $hints;
+	}
+
+	function _add_malformed_url_unsupported_scheme( $hints, $method ) {
+		if ( 'preconnect' === $method ) {
+			$hints[] = 'git://develop.git.wordpress.org/';
+		}
+
+		return $hints;
+	}
 }
