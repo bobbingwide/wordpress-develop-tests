@@ -1,9 +1,9 @@
 <?php
 /*
-Plugin Name: Automated testing
+Plugin Name: wordpress-develop-tests
 Plugin URI: http://develop.wp-a2z.org/oik-plugins/wordpress-develop-tests
 Description: Automated testing of WordPress using PHPUnit
-Version: 4.5.3
+Version: 4.6
 Author: bobbingwide
 Author URI: http://www.oik-plugins.com/author/bobbingwide
 Text Domain: 
