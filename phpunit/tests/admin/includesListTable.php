@@ -4,10 +4,15 @@
  * @group admin
  */
 class Tests_Admin_includesListTable extends WP_UnitTestCase {
-	protected static $top;
-	protected static $children;
-	protected static $grandchildren;
-	protected static $post_ids;
+	protected static $top = array();
+	protected static $children = array();
+	protected static $grandchildren = array();
+	protected static $post_ids = array();
+
+	/**
+	 * @var WP_Posts_List_Table
+	 */
+	protected $table;
 
 	function setUp() {
 		parent::setUp();
@@ -61,12 +66,6 @@ class Tests_Admin_includesListTable extends WP_UnitTestCase {
 					self::$post_ids[] = $p->ID;
 				}
 			}
-		}
-	}
-
-	public static function wpTearDownAfterClass() {
-		foreach ( self::$post_ids as $post_id ) {
-			wp_delete_post( $post_id, true );
 		}
 	}
 
@@ -197,4 +196,45 @@ class Tests_Admin_includesListTable extends WP_UnitTestCase {
 		}
 	}
 
+	/**
+	 * @ticket 37407
+	 */
+	function test_filter_button_should_not_be_shown_if_there_are_no_posts() {
+		// Set post type to a non-existent one.
+		$this->table->screen->post_type = 'foo';
+
+		ob_start();
+		$this->table->extra_tablenav( 'top' );
+		$output = ob_get_clean();
+
+		$this->assertNotContains( 'id="post-query-submit"', $output );
+	}
+
+	/**
+	 * @ticket 37407
+	 */
+	function test_months_dropdown_should_not_be_shown_if_there_are_no_posts() {
+		// Set post type to a non-existent one.
+		$this->table->screen->post_type = 'foo';
+
+		ob_start();
+		$this->table->extra_tablenav( 'top' );
+		$output = ob_get_clean();
+
+		$this->assertNotContains( 'id="filter-by-date"', $output );
+	}
+
+	/**
+	 * @ticket 37407
+	 */
+	function test_category_dropdown_should_not_be_shown_if_there_are_no_posts() {
+		// Set post type to a non-existent one.
+		$this->table->screen->post_type = 'foo';
+
+		ob_start();
+		$this->table->extra_tablenav( 'top' );
+		$output = ob_get_clean();
+
+		$this->assertNotContains( 'id="cat"', $output );
+	}
 }

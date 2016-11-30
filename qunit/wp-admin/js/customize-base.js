@@ -164,12 +164,16 @@ jQuery( function( $ ) {
 		var notification = new wp.customize.Notification( 'mycode', {
 			'message': 'Hello World',
 			'type': 'update',
+			'setting': 'blogname',
+			'fromServer': true,
 			'data': { 'foo': 'bar' }
 		} );
 
 		assert.equal( 'mycode', notification.code );
 		assert.equal( 'Hello World', notification.message );
 		assert.equal( 'update', notification.type );
+		assert.equal( 'blogname', notification.setting );
+		assert.equal( true, notification.fromServer );
 		assert.deepEqual( { 'foo': 'bar' }, notification.data );
 
 		notification = new wp.customize.Notification( 'mycode2', {
@@ -179,5 +183,24 @@ jQuery( function( $ ) {
 		assert.equal( 'Hello Space', notification.message );
 		assert.equal( 'error', notification.type );
 		assert.equal( null, notification.data );
+	} );
+
+	module( 'Customize Base: utils.parseQueryString' );
+	test( 'wp.customize.utils.parseQueryString works', function( assert ) {
+		var queryParams;
+		queryParams = wp.customize.utils.parseQueryString( 'a=1&b=2' );
+		assert.ok( _.isEqual( queryParams, { a: '1', b: '2' } ) );
+
+		queryParams = wp.customize.utils.parseQueryString( 'a+b=1&b=Hello%20World' );
+		assert.ok( _.isEqual( queryParams, { 'a_b': '1', b: 'Hello World' } ) );
+
+		queryParams = wp.customize.utils.parseQueryString( 'a%20b=1&b=Hello+World' );
+		assert.ok( _.isEqual( queryParams, { 'a_b': '1', b: 'Hello World' } ) );
+
+		queryParams = wp.customize.utils.parseQueryString( 'a=1&b' );
+		assert.ok( _.isEqual( queryParams, { 'a': '1', b: null } ) );
+
+		queryParams = wp.customize.utils.parseQueryString( 'a=1&b=' );
+		assert.ok( _.isEqual( queryParams, { 'a': '1', b: '' } ) );
 	} );
 });

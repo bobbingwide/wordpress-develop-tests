@@ -11,12 +11,6 @@ class Tests_Term_WpSetObjectTerms extends WP_UnitTestCase {
 		self::$post_ids = $factory->post->create_many( 5 );
 	}
 
-	public static function wpTearDownAfterClass() {
-		foreach ( self::$post_ids as $post_id ) {
-			wp_delete_post( $post_id, true );
-		}
-	}
-
 	/**
 	 * @ticket 26570
 	 */
@@ -110,7 +104,7 @@ class Tests_Term_WpSetObjectTerms extends WP_UnitTestCase {
 
 		$terms = array();
 		for ($i=0; $i<3; $i++ ) {
-			$term = rand_str();
+			$term = "term_{$i}";
 			$result = wp_insert_term( $term, $this->taxonomy );
 			$this->assertInternalType( 'array', $result );
 			$term_id[$term] = $result['term_id'];
@@ -171,7 +165,7 @@ class Tests_Term_WpSetObjectTerms extends WP_UnitTestCase {
 	function test_set_object_terms_invalid() {
 		// bogus taxonomy
 		$result = wp_set_object_terms( self::$post_ids[0], array(rand_str()), rand_str() );
-		$this->assertTrue( is_wp_error($result) );
+		$this->assertWPError( $result );
 	}
 
 	public function test_wp_set_object_terms_append_true() {
@@ -245,7 +239,7 @@ class Tests_Term_WpSetObjectTerms extends WP_UnitTestCase {
 		// first set: 3 terms
 		$terms_1 = array();
 		for ($i=0; $i<3; $i++ ) {
-			$term = rand_str();
+			$term = "term_{$i}";
 			$result = wp_insert_term( $term, $this->taxonomy );
 			$this->assertInternalType( 'array', $result );
 			$terms_1[$i] = $result['term_id'];
@@ -255,7 +249,7 @@ class Tests_Term_WpSetObjectTerms extends WP_UnitTestCase {
 		$terms_2 = array();
 		$terms_2[0] = $terms_1[1];
 
-		$term = rand_str();
+		$term = 'term';
 		$result = wp_insert_term( $term, $this->taxonomy );
 		$terms_2[1] = $result['term_id'];
 
@@ -265,7 +259,7 @@ class Tests_Term_WpSetObjectTerms extends WP_UnitTestCase {
 		$this->assertEquals( 3, count($tt_1) );
 
 		// make sure they're correct
-		$terms = wp_get_object_terms($post_id, $this->taxonomy, array('fields' => 'ids', 'orderby' => 't.term_id'));
+		$terms = wp_get_object_terms($post_id, $this->taxonomy, array('fields' => 'ids', 'orderby' => 'term_id'));
 		$this->assertEquals( $terms_1, $terms );
 
 		// change the terms
@@ -273,7 +267,7 @@ class Tests_Term_WpSetObjectTerms extends WP_UnitTestCase {
 		$this->assertEquals( 2, count($tt_2) );
 
 		// make sure they're correct
-		$terms = wp_get_object_terms($post_id, $this->taxonomy, array('fields' => 'ids', 'orderby' => 't.term_id'));
+		$terms = wp_get_object_terms($post_id, $this->taxonomy, array('fields' => 'ids', 'orderby' => 'term_id'));
 		$this->assertEquals( $terms_2, $terms );
 
 		// make sure the tt id for 'bar' matches
@@ -294,7 +288,7 @@ class Tests_Term_WpSetObjectTerms extends WP_UnitTestCase {
 		$this->assertEquals( 3, count($tt_1) );
 
 		// make sure they're correct
-		$terms = wp_get_object_terms($post_id, $this->taxonomy, array('fields' => 'names', 'orderby' => 't.term_id'));
+		$terms = wp_get_object_terms($post_id, $this->taxonomy, array('fields' => 'names', 'orderby' => 'term_id'));
 		$this->assertEquals( $terms_1, $terms );
 
 		// change the terms
@@ -302,7 +296,7 @@ class Tests_Term_WpSetObjectTerms extends WP_UnitTestCase {
 		$this->assertEquals( 2, count($tt_2) );
 
 		// make sure they're correct
-		$terms = wp_get_object_terms($post_id, $this->taxonomy, array('fields' => 'names', 'orderby' => 't.term_id'));
+		$terms = wp_get_object_terms($post_id, $this->taxonomy, array('fields' => 'names', 'orderby' => 'term_id'));
 		$this->assertEquals( $terms_2, $terms );
 
 		// make sure the tt id for 'bar' matches

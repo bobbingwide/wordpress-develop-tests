@@ -195,10 +195,10 @@ EOF;
 
 			switch ( $attack->name ) {
 				case 'XSS Locator':
-					$this->assertEquals('\';alert(String.fromCharCode(88,83,83))//\\\';alert(String.fromCharCode(88,83,83))//";alert(String.fromCharCode(88,83,83))//\\";alert(String.fromCharCode(88,83,83))//--&gt;"&gt;\'&gt;alert(String.fromCharCode(88,83,83))=', $result);
+					$this->assertEquals('\';alert(String.fromCharCode(88,83,83))//\\\';alert(String.fromCharCode(88,83,83))//";alert(String.fromCharCode(88,83,83))//\\";alert(String.fromCharCode(88,83,83))//--&gt;"&gt;\'&gt;alert(String.fromCharCode(88,83,83))=&amp;{}', $result);
 					break;
 				case 'XSS Quick Test':
-					$this->assertEquals('\'\';!--"=', $result);
+					$this->assertEquals('\'\';!--"=&amp;{()}', $result);
 					break;
 				case 'SCRIPT w/Alert()':
 					$this->assertEquals( "alert('XSS')", $result );
@@ -358,6 +358,20 @@ EOF;
 		remove_filter( 'wp_kses_allowed_html', array( $this, '_wp_kses_allowed_html_filter' ) );
 		$this->assertEquals( $allowedposttags, wp_kses_allowed_html( 'post' ) );
 		$this->assertEquals( $allowedtags, wp_kses_allowed_html( 'data' ) );
+	}
+
+	function test_hyphenated_tag() {
+		$string = "<hyphenated-tag attribute=\"value\" otherattribute=\"value2\">Alot of hyphens.</hyphenated-tag>";
+		$custom_tags = array(
+			'hyphenated-tag' => array(
+				'attribute' => true,
+			),
+		);
+		$expect_stripped_string = 'Alot of hyphens.';
+
+		$expect_valid_string = "<hyphenated-tag attribute=\"value\">Alot of hyphens.</hyphenated-tag>";
+		$this->assertEquals( $expect_stripped_string, wp_kses_post( $string ) );
+		$this->assertEquals( $expect_valid_string, wp_kses( $string, $custom_tags ) );
 	}
 
 	/**
