@@ -3,7 +3,7 @@
 Plugin Name: wordpress-develop-tests
 Plugin URI: http://develop.wp-a2z.org/oik-plugins/wordpress-develop-tests
 Description: Automated testing of WordPress using PHPUnit
-Version: 4.6
+Version: 4.7
 Author: bobbingwide
 Author URI: http://www.oik-plugins.com/author/bobbingwide
 Text Domain: 
