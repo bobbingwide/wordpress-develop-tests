@@ -1639,8 +1639,15 @@ class WP_Test_REST_Users_Controller extends WP_Test_REST_Controller_Testcase {
 
 		$userdata = get_userdata( $user_id ); // cache for later
 		$request = new WP_REST_Request( 'DELETE', sprintf( '/wp/v2/users/%d', $user_id ) );
-		$request['force'] = true;
+		$request->set_param( 'force', true );
+		$request->set_param( 'reassign', false );
 		$response = $this->server->dispatch( $request );
+
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
 
 		$this->assertEquals( 200, $response->get_status() );
 		$data = $response->get_data();
@@ -1657,7 +1664,15 @@ class WP_Test_REST_Users_Controller extends WP_Test_REST_Controller_Testcase {
 		$userdata = get_userdata( $user_id ); // cache for later
 
 		$request = new WP_REST_Request( 'DELETE', sprintf( '/wp/v2/users/%d', $user_id ) );
+		$request->set_param( 'reassign', false );
 		$response = $this->server->dispatch( $request );
+
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
+
 		$this->assertErrorResponse( 'rest_trash_not_supported', $response, 501 );
 
 		$request->set_param( 'force', 'false' );
@@ -1678,7 +1693,14 @@ class WP_Test_REST_Users_Controller extends WP_Test_REST_Controller_Testcase {
 
 		$request = new WP_REST_Request( 'DELETE', '/wp/v2/users/me' );
 		$request['force'] = true;
+		$request->set_param( 'reassign', false );
 		$response = $this->server->dispatch( $request );
+
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
 
 		$this->assertEquals( 200, $response->get_status() );
 		$data = $response->get_data();
@@ -1694,7 +1716,15 @@ class WP_Test_REST_Users_Controller extends WP_Test_REST_Controller_Testcase {
 		update_site_option( 'site_admins', array( $user->user_login ) );
 
 		$request = new WP_REST_Request( 'DELETE', '/wp/v2/users/me' );
+		$request->set_param( 'reassign', false );
 		$response = $this->server->dispatch( $request );
+
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
+
 		$this->assertErrorResponse( 'rest_trash_not_supported', $response, 501 );
 
 		$request->set_param( 'force', 'false' );
@@ -1714,12 +1744,14 @@ class WP_Test_REST_Users_Controller extends WP_Test_REST_Controller_Testcase {
 
 		$request = new WP_REST_Request( 'DELETE', sprintf( '/wp/v2/users/%d', $user_id ) );
 		$request['force'] = true;
+		$request->set_param( 'reassign', false );
 		$response = $this->server->dispatch( $request );
 
 		$this->assertErrorResponse( 'rest_user_cannot_delete', $response, 403 );
 
 		$request = new WP_REST_Request( 'DELETE', '/wp/v2/users/me' );
 		$request['force'] = true;
+		$request->set_param( 'reassign', false );
 		$response = $this->server->dispatch( $request );
 
 		$this->assertErrorResponse( 'rest_user_cannot_delete', $response, 403 );
@@ -1731,7 +1763,14 @@ class WP_Test_REST_Users_Controller extends WP_Test_REST_Controller_Testcase {
 
 		$request = new WP_REST_Request( 'DELETE', '/wp/v2/users/100' );
 		$request['force'] = true;
+		$request->set_param( 'reassign', false );
 		$response = $this->server->dispatch( $request );
+
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
 
 		$this->assertErrorResponse( 'rest_user_invalid_id', $response, 404 );
 	}
@@ -1757,6 +1796,12 @@ class WP_Test_REST_Users_Controller extends WP_Test_REST_Controller_Testcase {
 		$request->set_param( 'reassign', $reassign_id );
 		$response = $this->server->dispatch( $request );
 
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
+
 		$this->assertEquals( 200, $response->get_status() );
 
 		// Check that the post has been updated correctly
@@ -1775,7 +1820,127 @@ class WP_Test_REST_Users_Controller extends WP_Test_REST_Controller_Testcase {
 		$request->set_param( 'reassign', 100 );
 		$response = $this->server->dispatch( $request );
 
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
+
 		$this->assertErrorResponse( 'rest_user_invalid_reassign', $response, 400 );
+	}
+
+	public function test_delete_user_invalid_reassign_passed_as_string() {
+		$user_id = $this->factory->user->create();
+
+		$this->allow_user_to_manage_multisite();
+		wp_set_current_user( self::$user );
+
+		$request = new WP_REST_Request( 'DELETE', sprintf( '/wp/v2/users/%d', $user_id ) );
+		$request['force'] = true;
+		$request->set_param( 'reassign', 'null' );
+		$response = $this->server->dispatch( $request );
+
+		$this->assertErrorResponse( 'rest_invalid_param', $response, 400 );
+	}
+
+	public function test_delete_user_reassign_passed_as_boolean_false_trashes_post() {
+		$user_id = $this->factory->user->create();
+
+		$this->allow_user_to_manage_multisite();
+		wp_set_current_user( self::$user );
+
+		$test_post = $this->factory->post->create(array(
+			'post_author' => $user_id,
+		));
+
+		$request = new WP_REST_Request( 'DELETE', sprintf( '/wp/v2/users/%d', $user_id ) );
+		$request['force'] = true;
+		$request->set_param( 'reassign', false );
+		$response = $this->server->dispatch( $request );
+
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
+
+		$test_post = get_post( $test_post );
+		$this->assertEquals( 'trash', $test_post->post_status );
+	}
+
+	public function test_delete_user_reassign_passed_as_string_false_trashes_post() {
+		$user_id = $this->factory->user->create();
+
+		$this->allow_user_to_manage_multisite();
+		wp_set_current_user( self::$user );
+
+		$test_post = $this->factory->post->create(array(
+			'post_author' => $user_id,
+		));
+
+		$request = new WP_REST_Request( 'DELETE', sprintf( '/wp/v2/users/%d', $user_id ) );
+		$request['force'] = true;
+		$request->set_param( 'reassign', 'false' );
+		$response = $this->server->dispatch( $request );
+
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
+
+		$test_post = get_post( $test_post );
+		$this->assertEquals( 'trash', $test_post->post_status );
+	}
+
+	public function test_delete_user_reassign_passed_as_empty_string_trashes_post() {
+		$user_id = $this->factory->user->create();
+
+		$this->allow_user_to_manage_multisite();
+		wp_set_current_user( self::$user );
+
+		$test_post = $this->factory->post->create(array(
+			'post_author' => $user_id,
+		));
+
+		$request = new WP_REST_Request( 'DELETE', sprintf( '/wp/v2/users/%d', $user_id ) );
+		$request['force'] = true;
+		$request->set_param( 'reassign', '' );
+		$response = $this->server->dispatch( $request );
+
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
+
+		$test_post = get_post( $test_post );
+		$this->assertEquals( 'trash', $test_post->post_status );
+	}
+
+	public function test_delete_user_reassign_passed_as_0_reassigns_author() {
+		$user_id = $this->factory->user->create();
+
+		$this->allow_user_to_manage_multisite();
+		wp_set_current_user( self::$user );
+
+		$test_post = $this->factory->post->create(array(
+			'post_author' => $user_id,
+		));
+
+		$request = new WP_REST_Request( 'DELETE', sprintf( '/wp/v2/users/%d', $user_id ) );
+		$request['force'] = true;
+		$request->set_param( 'reassign', 0 );
+		$response = $this->server->dispatch( $request );
+
+		// Not implemented in multisite.
+		if ( is_multisite() ) {
+			$this->assertErrorResponse( 'rest_cannot_delete', $response, 501 );
+			return;
+		}
+
+		$test_post = get_post( $test_post );
+		$this->assertEquals( 0, $test_post->post_author );
 	}
 
 	public function test_get_item_schema() {
