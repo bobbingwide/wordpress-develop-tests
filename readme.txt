@@ -3,8 +3,8 @@ Contributors: bobbingwide
 Donate link: http://www.oik-plugins.com/oik/oik-donate/
 Tags: PHPUnit, automated, testing
 Requires at least: 4.7
-Tested up to: 4.7
-Stable tag: 4.7
+Tested up to: 4.7.3
+Stable tag: 4.7.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: default
@@ -30,7 +30,7 @@ The purpose of this plugin is twofold:
 * Only intended for installation into a WordPress environment where you'll be running your own PHPUnit tests
 
 * The zip file is built from the tests folder of the wordpress-develop SVN repository.
-(  http://develop.svn.wordpress.org/branches/4.7 )
+(  http://develop.svn.wordpress.org/tags/4.7.3 )
 
 
 
@@ -65,15 +65,18 @@ Yes.
 
 = What's the process for managing this repo? =
 
-Original method: Nov 2014
+Method: March 2017
+- Extract http://develop.svn.wordpress.org/tags/4.7.3 to c:\svn\wordpress-develop\4.7.3
+- remaining steps as August 2016
 
-To get WP-A2z to work locally I simply created a symbolic link
-from the latest SVN version to a plugin directory
 
-cd wp-content/plugins
-mklink /J wordpress-develop-tests svn\wordpress-develop\tests
+Method: December 2016
 
-Recently: August 2016
+- Extract http://develop.svn.wordpress.org/branch/4.7 to C:\svn\wordpress-develop\4.7
+- remaining steps as August 2016
+
+
+Method: August 2016
 
 This is the latest process used to build the API reference.
 
@@ -86,19 +89,25 @@ This is the latest process used to build the API reference.
 - Pull into the WP-a2z websites plugin directory
 - Build the dynamic API reference for the latest level
 
-Current method: December 2016
 
-- Extract http://develop.svn.wordpress.org/branch/4.7 to C:\svn\wordpress-develop\4.7
-- remaining steps as above
+Original method: Nov 2014
 
- 
+To get WP-A2z to work locally I simply created a symbolic link
+from the latest SVN version to a plugin directory.
+
+cd wp-content/plugins
+mklink /J wordpress-develop-tests svn\wordpress-develop\tests
+
 
 == Screenshots ==
 1. None
 
 == Upgrade Notice ==
+= 4.7.3 
+Built from http://develop.svn.wordpress.org/tags/4.7.3 (on 2016/03/12 )
+
 = 4.7 = 
-Built from http://develop.svn.wordpress.org/branch/4.7 (on 2016/12/07)
+Built from http://develop.svn.wordpress.org/branch/4.7 (on 2016/12/07 )
 
 = 4.6  =
 Built from an SVN extract of trunk taken 2016/08/19
@@ -113,6 +122,11 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 == Changelog ==
+= 4.7.3 = 
+* Changed: Source files updated to tags/4.7.3
+* Changed: updated readme
+* Deleted: phpunit/tests/user/wpSetCurrentUserhm.php - again, not part of WordPress tests 
+
 = 4.7 = 
 * Changed: source files updated to branch/4.7 
 * Changed: updated readme

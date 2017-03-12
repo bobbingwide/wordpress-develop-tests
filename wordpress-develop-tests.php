@@ -3,7 +3,7 @@
 Plugin Name: wordpress-develop-tests
 Plugin URI: http://develop.wp-a2z.org/oik-plugins/wordpress-develop-tests
 Description: Automated testing of WordPress using PHPUnit
-Version: 4.7
+Version: 4.7.3
 Author: bobbingwide
 Author URI: http://www.oik-plugins.com/author/bobbingwide
 Text Domain: 
@@ -11,7 +11,7 @@ Domain Path: /languages/
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-    Copyright 2014-2016 Bobbing Wide (email : herb@bobbingwide.com )
+    Copyright 2014-2017 Bobbing Wide (email : herb@bobbingwide.com )
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License version 2,
