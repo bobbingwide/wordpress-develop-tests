@@ -1,11 +1,11 @@
 # wordpress-develop-tests 
 ![banner](https://raw.githubusercontent.com/bobbingwide/wordpress-develop-tests/master/assets/wordpress-develop-tests-banner-772x250.jpg)
 * Contributors: bobbingwide
-* Donate link: http://www.oik-plugins.com/oik/oik-donate/
+* Donate link: https://www.oik-plugins.com/oik/oik-donate/
 * Tags: PHPUnit, automated, testing
-* Requires at least: 4.7
-* Tested up to: 4.7.3
-* Stable tag: 4.7.3
+* Requires at least: 4.8
+* Tested up to: 4.8
+* Stable tag: 4.8
 * License: GPLv2 or later
 * License URI: http://www.gnu.org/licenses/gpl-2.0.html
 * Text Domain: default
@@ -31,15 +31,15 @@ The purpose of this plugin is twofold:
 * Only intended for installation into a WordPress environment where you'll be running your own PHPUnit tests
 
 * The zip file is built from the tests folder of the wordpress-develop SVN repository.
-(  http://develop.svn.wordpress.org/tags/4.7.3 )
 
 
 
 ## Frequently Asked Questions 
+
+
 # What does this plugin do? 
 Nothing as a plugin. You have to invoke the tests using PHPUnit.
-But since we don't provide the phpunit.xml file it won't work.
-
+But since we don't provide the phpunit.xml file for the WordPress core tests it won't work.
 
 # What would happen if I did actually run this? 
 If you activate the plugin then nothing is expected to happen since it doesn't contain any code.
@@ -52,6 +52,16 @@ If you had happened to configure your database the same as your live site then y
 # Can I run the tests from my WordPress site? 
 I'm sure you could try to do this but I can't see why you'd want to.
 
+# How do I run in situ tests for my plugin or theme 
+
+Use this plugin in combination with [oik-batch](https://github.com/bobbingwide/oik-batch)
+
+# What versions of PHPUnit does this support? 
+
+From WordPress 4.8 you can use PHPUnit 6.2, 6.1 or 5.7
+For earlier versions of WordPress you can use PHPUnit 5.7
+
+
 
 # How does this help me to develop WordPress tests? 
 
@@ -59,12 +69,19 @@ In the same way that WP-a2z.org helps you to develop WordPress code
 this provides you with a dynamic reference of current tests.
 See [develop.wp-a2z.org](http://develop.wp-a2z.org)
 
+
 # Have you actually tried using this? 
 
-Yes.
+Yes. oik-plugins are PHPUnit tested using in situ testing.
+See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.me/2016/08/21/run-phpunit-tests-wordpress-plugins-situ/)
 
 
 # What's the process for managing this repo? 
+
+* Method: June 2017
+- Extract http://develop.svn.wordpress.org/trunk to C:\svn\wordpress-develop
+- remaining steps as August 2016
+
 
 * Method: March 2017
 - Extract http://develop.svn.wordpress.org/tags/4.7.3 to c:\svn\wordpress-develop\4.7.3
@@ -104,8 +121,11 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 ## Upgrade Notice 
-# 4.7.3
-Built from http://develop.svn.wordpress.org/tags/4.7.3 (on 2016/03/12 )
+# 4.8 
+Built from http://develop.svn.wordpress.org/trunk ( on 2017/06/02 )
+
+# 4.7.3 
+Built from http://develop.svn.wordpress.org/tags/4.7.3 (on 2017/03/12 )
 
 # 4.7 
 Built from http://develop.svn.wordpress.org/branch/4.7 (on 2016/12/07 )
@@ -123,6 +143,11 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 ## Changelog 
+# 4.8 
+* Changed: Source files updated to version in /trunk = 4.9-alpha-40870-src
+* Changed: updated readme
+* Tested: With PHPUnit 6.1 and 5.7.
+
 # 4.7.3 
 * Changed: Source files updated to tags/4.7.3
 * Changed: updated readme
@@ -158,7 +183,9 @@ https://develop.svn.wordpress.org/trunk/
 This will also extract the latest version of the source.
 
 
-Read about [PHPUnit](https://phpunit.de/manual/5.7/en/index.html)
-
-Read about [Automated testing on make.wordpress.org](https://make.wordpress.org/core/handbook/automated-testing)
+Read about:
+- [PHPUnit 5.7](https://phpunit.de/manual/5.7/en/index.html)
+- [PHPUnit 6.2](https://phpunit.de/manual/6.2/en/index.html)
+- [Automated testing on make.wordpress.org](https://make.wordpress.org/core/handbook/automated-testing)
+- [
 

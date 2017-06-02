@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: wordpress-develop-tests
-Plugin URI: http://develop.wp-a2z.org/oik-plugins/wordpress-develop-tests
+Plugin URI: https://develop.wp-a2z.org/oik-plugins/wordpress-develop-tests
 Description: Automated testing of WordPress using PHPUnit
-Version: 4.7.3
+Version: 4.8
 Author: bobbingwide
-Author URI: http://www.oik-plugins.com/author/bobbingwide
+Author URI: https://www.oik-plugins.com/author/bobbingwide
 Text Domain: 
 Domain Path: /languages/
 License: GPLv2 or later
