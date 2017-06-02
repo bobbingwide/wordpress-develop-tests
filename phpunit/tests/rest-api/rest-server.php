@@ -646,6 +646,8 @@ class Tests_REST_Server extends WP_Test_REST_TestCase {
 		$this->assertArrayHasKey( 'description', $data );
 		$this->assertArrayHasKey( 'url', $data );
 		$this->assertArrayHasKey( 'home', $data );
+		$this->assertArrayHasKey( 'gmt_offset', $data );
+		$this->assertArrayHasKey( 'timezone_string', $data );
 		$this->assertArrayHasKey( 'namespaces', $data );
 		$this->assertArrayHasKey( 'authentication', $data );
 		$this->assertArrayHasKey( 'routes', $data );
@@ -761,9 +763,16 @@ class Tests_REST_Server extends WP_Test_REST_TestCase {
 		$headers = $this->server->sent_headers;
 
 		foreach ( wp_get_nocache_headers() as $header => $value ) {
+			if ( empty( $value ) ) {
+				continue;
+			}
+
 			$this->assertTrue( isset( $headers[ $header ] ), sprintf( 'Header %s is not present in the response.', $header ) );
 			$this->assertEquals( $value, $headers[ $header ] );
 		}
+
+		// Last-Modified should be unset as per #WP23021
+		$this->assertFalse( isset( $headers['Last-Modified'] ), 'Last-Modified should not be sent.' );
 	}
 
 	public function test_no_nocache_headers_on_unauthenticated_requests() {

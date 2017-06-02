@@ -103,7 +103,7 @@ class Test_WP_Customize_Custom_CSS_Setting extends WP_UnitTestCase {
 	/**
 	 * Test crud methods on WP_Customize_Custom_CSS_Setting.
 	 *
-	 * @covers wp_get_custom_css()
+	 * @covers ::wp_get_custom_css
 	 * @covers WP_Customize_Custom_CSS_Setting::value()
 	 * @covers WP_Customize_Custom_CSS_Setting::preview()
 	 * @covers WP_Customize_Custom_CSS_Setting::update()
@@ -135,6 +135,8 @@ class Test_WP_Customize_Custom_CSS_Setting extends WP_UnitTestCase {
 		) );
 		$twentyten_setting = new WP_Customize_Custom_CSS_Setting( $this->wp_customize, 'custom_css[twentyten]' );
 
+		remove_theme_mod( 'custom_css_post_id' );
+
 		$this->assertEquals( $post_id, wp_get_custom_css_post()->ID );
 		$this->assertEquals( $post_id, wp_get_custom_css_post( $this->setting->stylesheet )->ID );
 		$this->assertEquals( $twentyten_post_id, wp_get_custom_css_post( 'twentyten' )->ID );
@@ -148,7 +150,7 @@ class Test_WP_Customize_Custom_CSS_Setting extends WP_UnitTestCase {
 		$this->wp_customize->set_post_value( $this->setting->id, $updated_css );
 		$saved = $this->setting->save();
 
-		$this->assertTrue( false !== $saved );
+		$this->assertNotFalse( $saved );
 		$this->assertEquals( $updated_css, $this->setting->value() );
 		$this->assertEquals( $updated_css, wp_get_custom_css( $this->setting->stylesheet ) );
 		$this->assertEquals( $updated_css, get_post( $post_id )->post_content );
@@ -221,6 +223,29 @@ class Test_WP_Customize_Custom_CSS_Setting extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that wp_get_custom_css_post() doesn't query for a post after caching a failed lookup.
+	 *
+	 * @ticket 39259
+	 */
+	function test_get_custom_css_post_queries_after_failed_lookup() {
+		set_theme_mod( 'custom_css_post_id', -1 );
+		$queries_before = get_num_queries();
+		wp_get_custom_css_post();
+		$this->assertSame( get_num_queries(), $queries_before );
+	}
+
+	/**
+	 * Test that wp_update_custom_css_post() updates the 'custom_css_post_id' theme mod.
+	 *
+	 * @ticket 39259
+	 */
+	function test_update_custom_css_updates_theme_mod() {
+		set_theme_mod( 'custom_css_post_id', -1 );
+		$post = wp_update_custom_css_post( 'body { background: blue; }' );
+		$this->assertSame( $post->ID, get_theme_mod( 'custom_css_post_id' ) );
+	}
+
+	/**
 	 * Test crud methods on WP_Customize_Custom_CSS_Setting.
 	 *
 	 * @covers WP_Customize_Custom_CSS_Setting::value()
@@ -237,6 +262,7 @@ class Test_WP_Customize_Custom_CSS_Setting extends WP_UnitTestCase {
 			'post_status' => 'publish',
 			'post_type' => 'custom_css',
 		) );
+		remove_theme_mod( 'custom_css_post_id' );
 		$this->assertEquals( '/*custom*//*filtered*/', $this->setting->value() );
 
 		$this->wp_customize->set_post_value( $this->setting->id, '/*overridden*/' );
@@ -363,11 +389,6 @@ class Test_WP_Customize_Custom_CSS_Setting extends WP_UnitTestCase {
 		$imbalanced_double_quotes = $basic_css . ' div.background-image { background-image: url( "image.jpg ); } ';
 		$result = $this->setting->validate( $imbalanced_double_quotes );
 		$this->assertTrue( array_key_exists( 'unequal_double_quotes', $result->errors ) );
-
-		// Check for Imbalanced Single Quotes.
-		$imbalanced_single_quotes = $basic_css . " div.background-image { background-image: url( 'image.jpg ); } ";
-		$result = $this->setting->validate( $imbalanced_single_quotes );
-		$this->assertTrue( array_key_exists( 'unequal_single_quotes', $result->errors ) );
 
 		// Check for Unclosed Parentheses.
 		$unclosed_parentheses = $basic_css . ' div.background-image { background-image: url( "image.jpg" ; } ';

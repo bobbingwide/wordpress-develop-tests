@@ -377,6 +377,58 @@ class Tests_Term_WpInsertTerm extends WP_UnitTestCase {
 	}
 
 	/**
+	 * @ticket 39984
+	 */
+	public function test_duplicate_name_check_should_fail_when_no_slug_is_provided_even_when_slugs_would_not_clash() {
+		register_taxonomy( 'wptests_tax', 'post', array( 'hierarchical' => true ) );
+		$t1 = self::factory()->term->create( array(
+			'name' => 'Foo',
+			'slug' => 'foo-no-conflict',
+			'taxonomy' => 'wptests_tax',
+		) );
+
+		$error = wp_insert_term( 'Foo', 'wptests_tax' );
+
+		$this->assertWPError( $error );
+		$this->assertSame( 'term_exists', $error->get_error_code() );
+		$this->assertSame( $t1, $error->get_error_data() );
+	}
+
+	/**
+	 * @ticket 39984
+	 */
+	public function test_error_should_reference_correct_term_when_rejected_as_duplicate() {
+		register_taxonomy( 'wptests_tax', 'post', array( 'hierarchical' => true ) );
+		$t1 = self::factory()->term->create( array(
+			'name' => 'Foo',
+			'slug' => 'foo',
+			'taxonomy' => 'wptests_tax',
+		) );
+
+		$t2 = self::factory()->term->create( array(
+			'name' => 'Bar',
+			'slug' => 'bar',
+			'taxonomy' => 'wptests_tax',
+		) );
+
+		$t1_child = wp_insert_term( 'Child', 'wptests_tax', array(
+			'parent' => $t1,
+		) );
+
+		$t2_child = wp_insert_term( 'Child', 'wptests_tax', array(
+			'parent' => $t2,
+		) );
+
+		$error = wp_insert_term( 'Child', 'wptests_tax', array(
+			'parent' => $t2,
+		) );
+
+		$this->assertWPError( $error );
+		$this->assertSame( 'term_exists', $error->get_error_code() );
+		$this->assertSame( $t2_child['term_id'], $error->get_error_data() );
+	}
+
+	/**
 	 * @ticket 31328
 	 */
 	public function test_wp_insert_term_should_allow_duplicate_names_when_a_unique_slug_has_been_provided_in_hierarchical_taxonomy() {

@@ -5,16 +5,16 @@
 class Tests_External_HTTP_Basic extends WP_UnitTestCase {
 
 	function test_readme() {
+		// This test is designed to only run on trunk/master
+		$this->skipOnAutomatedBranches();
+
 		$readme = file_get_contents( ABSPATH . 'readme.html' );
-		preg_match( '#<br /> Version (.*)#', $readme, $matches );
-		list( $version ) = explode( '-', $GLOBALS['wp_version'] );
-		$this->assertEquals( $version, trim( $matches[1] ), "readme.html's version needs to be updated to $version." );
 
 		preg_match( '#Recommendations.*PHP</a> version <strong>([0-9.]*)#s', $readme, $matches );
 
 		$response = wp_remote_get( 'https://secure.php.net/supported-versions.php' );
 		if ( 200 != wp_remote_retrieve_response_code( $response ) ) {
-			$this->markTestSkipped( 'Could not contact PHP.net to check versions.' );
+			$this->fail( 'Could not contact PHP.net to check versions.' );
 		}
 		$php = wp_remote_retrieve_body( $response );
 
@@ -26,7 +26,7 @@ class Tests_External_HTTP_Basic extends WP_UnitTestCase {
 
 		$response = wp_remote_get( "https://dev.mysql.com/doc/relnotes/mysql/{$matches[1]}/en/" );
 		if ( 200 != wp_remote_retrieve_response_code( $response ) ) {
-			$this->markTestSkipped( 'Could not contact dev.MySQL.com to check versions.' );
+			$this->fail( 'Could not contact dev.MySQL.com to check versions.' );
 		}
 		$mysql = wp_remote_retrieve_body( $response );
 

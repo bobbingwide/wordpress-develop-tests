@@ -10,6 +10,8 @@
  * @group restapi
  */
 class Tests_REST_Request extends WP_UnitTestCase {
+	public $request;
+
 	public function setUp() {
 		parent::setUp();
 
@@ -27,6 +29,14 @@ class Tests_REST_Request extends WP_UnitTestCase {
 	public function test_header_missing() {
 		$this->assertNull( $this->request->get_header( 'missing' ) );
 		$this->assertNull( $this->request->get_header_as_array( 'missing' ) );
+	}
+	
+	public function test_remove_header() {
+		$this->request->add_header( 'Test-Header', 'value' );
+		$this->assertEquals( 'value', $this->request->get_header( 'Test-Header' ) );
+		
+		$this->request->remove_header( 'Test-Header' );
+		$this->assertNull( $this->request->get_header( 'Test-Header' ) );
 	}
 
 	public function test_header_multiple() {
@@ -201,11 +211,22 @@ class Tests_REST_Request extends WP_UnitTestCase {
 		$this->assertEmpty( $this->request->get_param( 'has_json_params' ) );
 	}
 
+	public function non_post_http_methods_with_request_body_provider() {
+		return array(
+			array( 'PUT' ),
+			array( 'PATCH' ),
+			array( 'DELETE' ),
+		);
+	}
+
 	/**
-	 * PUT requests don't get $_POST automatically parsed, so ensure that
-	 * WP_REST_Request does it for us.
+	 * Tests that methods supporting request bodies have access to the
+	 * request's body.  For POST this is straightforward via `$_POST`; for
+	 * other methods `WP_REST_Request` needs to parse the body for us.
+	 *
+	 * @dataProvider non_post_http_methods_with_request_body_provider
 	 */
-	public function test_parameters_for_put() {
+	public function test_non_post_body_parameters( $request_method ) {
 		$data = array(
 			'foo' => 'bar',
 			'alot' => array(
@@ -217,11 +238,9 @@ class Tests_REST_Request extends WP_UnitTestCase {
 				'stuff',
 			),
 		);
-
-		$this->request->set_method( 'PUT' );
+		$this->request->set_method( $request_method );
 		$this->request->set_body_params( array() );
 		$this->request->set_body( http_build_query( $data ) );
-
 		foreach ( $data as $key => $expected_value ) {
 			$this->assertEquals( $expected_value, $this->request->get_param( $key ) );
 		}
@@ -342,6 +361,42 @@ class Tests_REST_Request extends WP_UnitTestCase {
 		$this->assertEquals( 'rest_invalid_param', $valid->get_error_code() );
 	}
 
+	public function test_sanitize_params_with_null_callback() {
+		$this->request->set_url_params( array(
+			'some_email' => '',
+		) );
+
+		$this->request->set_attributes( array(
+			'args' => array(
+				'some_email' => array(
+					'type'              => 'string',
+					'format'            => 'email',
+					'sanitize_callback' => null,
+				),
+			),
+		) );
+
+		$this->assertTrue( $this->request->sanitize_params() );
+	}
+
+	public function test_sanitize_params_with_false_callback() {
+		$this->request->set_url_params( array(
+			'some_uri'   => 1.23422,
+		) );
+
+		$this->request->set_attributes( array(
+			'args' => array(
+				'some_uri' => array(
+					'type'              => 'string',
+					'format'            => 'uri',
+					'sanitize_callback' => false,
+				),
+			),
+		) );
+
+		$this->assertTrue( $this->request->sanitize_params() );
+	}
+
 	public function test_has_valid_params_required_flag() {
 		$this->request->set_attributes( array(
 			'args' => array(
@@ -412,6 +467,19 @@ class Tests_REST_Request extends WP_UnitTestCase {
 		$this->assertEquals( 'rest_invalid_json', $valid->get_error_code() );
 		$data = $valid->get_error_data();
 		$this->assertEquals( JSON_ERROR_SYNTAX, $data['json_error_code'] );
+	}
+
+
+	public function test_has_valid_params_empty_json_no_error() {
+		if ( version_compare( PHP_VERSION, '5.3', '<' ) ) {
+			return $this->markTestSkipped( 'JSON validation is only available for PHP 5.3+' );
+		}
+
+		$this->request->set_header( 'Content-Type', 'application/json' );
+		$this->request->set_body( '' );
+
+		$valid = $this->request->has_valid_params();
+		$this->assertNotWPError( $valid );
 	}
 
 	public function test_has_multiple_invalid_params_validate_callback() {
@@ -511,5 +579,32 @@ class Tests_REST_Request extends WP_UnitTestCase {
 		$using_home = home_url( '/wp/v2/posts/1' ) ;
 		$request = WP_REST_Request::from_url( $using_home );
 		$this->assertFalse( $request );
+	}
+
+	public function test_set_param() {
+		$request = new WP_REST_Request();
+		$request->set_param( 'param', 'value' );
+		$this->assertEquals( 'value', $request->get_param( 'param' ) );
+	}
+
+	public function test_set_param_follows_parameter_order() {
+		$request = new WP_REST_Request();
+		$request->add_header( 'content-type', 'application/json' );
+		$request->set_method( 'POST' );
+		$request->set_body( wp_json_encode( array(
+			'param' => 'value'
+		) ) );
+		$this->assertEquals( 'value', $request->get_param( 'param' ) );
+		$this->assertEquals(
+			array( 'param' => 'value' ),
+			$request->get_json_params()
+		);
+
+		$request->set_param( 'param', 'new_value' );
+		$this->assertEquals( 'new_value', $request->get_param( 'param' ) );
+		$this->assertEquals(
+			array( 'param' => 'new_value' ),
+			$request->get_json_params()
+		);
 	}
 }

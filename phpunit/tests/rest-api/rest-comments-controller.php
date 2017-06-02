@@ -76,7 +76,9 @@ class WP_Test_REST_Comments_Controller extends WP_Test_REST_Controller_Testcase 
 	}
 
 	public static function wpTearDownAfterClass() {
+		self::delete_user( self::$superadmin_id );
 		self::delete_user( self::$admin_id );
+		self::delete_user( self::$editor_id );
 		self::delete_user( self::$subscriber_id );
 		self::delete_user( self::$author_id );
 
@@ -835,7 +837,7 @@ class WP_Test_REST_Comments_Controller extends WP_Test_REST_Controller_Testcase 
 		$request = new WP_REST_Request( 'GET', '/wp/v2/comments/' . $comment_id );
 
 		$response = $this->server->dispatch( $request );
-		$this->assertErrorResponse( 'rest_cannot_read', $response, 401 );
+		$this->assertErrorResponse( 'rest_post_invalid_id', $response, 404 );
 	}
 
 	public function test_get_comment_invalid_post_id_as_admin() {
@@ -958,6 +960,84 @@ class WP_Test_REST_Comments_Controller extends WP_Test_REST_Controller_Testcase 
 		$this->assertEquals( self::$post_id, $data['post'] );
 	}
 
+	public function comment_dates_provider() {
+		return array(
+			'set date without timezone' => array(
+				'params'   => array(
+					'timezone_string' => 'America/New_York',
+					'date'            => '2016-12-12T14:00:00',
+				),
+				'results' => array(
+					'date'            => '2016-12-12T14:00:00',
+					'date_gmt'        => '2016-12-12T19:00:00',
+				),
+			),
+			'set date_gmt without timezone' => array(
+				'params'   => array(
+					'timezone_string' => 'America/New_York',
+					'date_gmt'        => '2016-12-12T19:00:00',
+				),
+				'results' => array(
+					'date'            => '2016-12-12T14:00:00',
+					'date_gmt'        => '2016-12-12T19:00:00',
+				),
+			),
+			'set date with timezone' => array(
+				'params'   => array(
+					'timezone_string' => 'America/New_York',
+					'date'            => '2016-12-12T18:00:00-01:00',
+				),
+				'results' => array(
+					'date'            => '2016-12-12T14:00:00',
+					'date_gmt'        => '2016-12-12T19:00:00',
+				),
+			),
+			'set date_gmt with timezone' => array(
+				'params'   => array(
+					'timezone_string' => 'America/New_York',
+					'date_gmt'        => '2016-12-12T18:00:00-01:00',
+				),
+				'results' => array(
+					'date'            => '2016-12-12T14:00:00',
+					'date_gmt'        => '2016-12-12T19:00:00',
+				),
+			),
+		);
+	}
+
+	/**
+	 * @dataProvider comment_dates_provider
+	 */
+	public function test_create_comment_date( $params, $results ) {
+		wp_set_current_user( self::$admin_id );
+		update_option( 'timezone_string', $params['timezone_string'] );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/comments' );
+		$request->set_param( 'content', 'not empty' );
+		$request->set_param( 'post', self::$post_id );
+		if ( isset( $params['date'] ) ) {
+			$request->set_param( 'date', $params['date'] );
+		}
+		if ( isset( $params['date_gmt'] ) ) {
+			$request->set_param( 'date_gmt', $params['date_gmt'] );
+		}
+		$response = $this->server->dispatch( $request );
+
+		update_option( 'timezone_string', '' );
+
+		$this->assertEquals( 201, $response->get_status() );
+		$data = $response->get_data();
+		$comment = get_comment( $data['id'] );
+
+		$this->assertEquals( $results['date'], $data['date'] );
+		$comment_date = str_replace( 'T', ' ', $results['date'] );
+		$this->assertEquals( $comment_date, $comment->comment_date );
+
+		$this->assertEquals( $results['date_gmt'], $data['date_gmt'] );
+		$comment_date_gmt = str_replace( 'T', ' ', $results['date_gmt'] );
+		$this->assertEquals( $comment_date_gmt, $comment->comment_date_gmt );
+	}
+
 	public function test_create_item_using_accepted_content_raw_value() {
 		wp_set_current_user( self::$admin_id );
 
@@ -981,6 +1061,32 @@ class WP_Test_REST_Comments_Controller extends WP_Test_REST_Controller_Testcase 
 		$data = $response->get_data();
 		$new_comment = get_comment( $data['id'] );
 		$this->assertEquals( $params['content']['raw'], $new_comment->comment_content );
+	}
+
+	public function test_create_item_error_from_filter() {
+		add_filter( 'rest_pre_insert_comment', array( $this, 'return_premade_error' ) );
+		wp_set_current_user( self::$admin_id );
+
+		$params = array(
+			'post'         => self::$post_id,
+			'author_name'  => 'Homer Jay Simpson',
+			'author_email' => 'homer@example.org',
+			'content'      => array(
+				'raw' => 'Aw, he loves beer. Here, little fella.'
+			),
+		);
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/comments' );
+		$request->add_header( 'content-type', 'application/json' );
+		$request->set_body( wp_json_encode( $params ) );
+
+		$response = $this->server->dispatch( $request );
+
+		$this->assertErrorResponse( 'test_rest_premade_error', $response, 418 );
+	}
+
+	public function return_premade_error() {
+		return new WP_Error( 'test_rest_premade_error', "I'm sorry, I thought he was a party robot.", array( 'status' => 418 ) );
 	}
 
 	public function test_create_comment_missing_required_author_name() {
@@ -1942,6 +2048,39 @@ class WP_Test_REST_Comments_Controller extends WP_Test_REST_Controller_Testcase 
 		$this->assertEquals( '2014-11-07T10:14:25', $comment['date'] );
 	}
 
+	/**
+	 * @dataProvider comment_dates_provider
+	 */
+	public function test_update_comment_date( $params, $results ) {
+		wp_set_current_user( self::$editor_id );
+		update_option( 'timezone_string', $params['timezone_string'] );
+
+		$comment_id = $this->factory->comment->create();
+
+		$request = new WP_REST_Request( 'PUT', sprintf( '/wp/v2/comments/%d', $comment_id ) );
+		if ( isset( $params['date'] ) ) {
+			$request->set_param( 'date', $params['date'] );
+		}
+		if ( isset( $params['date_gmt'] ) ) {
+			$request->set_param( 'date_gmt', $params['date_gmt'] );
+		}
+		$response = $this->server->dispatch( $request );
+
+		update_option( 'timezone_string', '' );
+
+		$this->assertEquals( 200, $response->get_status() );
+		$data = $response->get_data();
+		$comment = get_comment( $data['id'] );
+
+		$this->assertEquals( $results['date'], $data['date'] );
+		$comment_date = str_replace( 'T', ' ', $results['date'] );
+		$this->assertEquals( $comment_date, $comment->comment_date );
+
+		$this->assertEquals( $results['date_gmt'], $data['date_gmt'] );
+		$comment_date_gmt = str_replace( 'T', ' ', $results['date_gmt'] );
+		$this->assertEquals( $comment_date_gmt, $comment->comment_date_gmt );
+	}
+
 	public function test_update_item_no_content() {
 		$post_id = $this->factory->post->create();
 
@@ -1959,6 +2098,22 @@ class WP_Test_REST_Comments_Controller extends WP_Test_REST_Controller_Testcase 
 		$request->set_param( 'content', '' );
 		$response = $this->server->dispatch( $request );
 		$this->assertErrorResponse( 'rest_comment_content_invalid', $response, 400 );
+	}
+
+	public function test_update_item_no_change() {
+		$comment = get_comment( self::$approved_id );
+
+		wp_set_current_user( self::$admin_id );
+		$request = new WP_REST_Request( 'PUT', sprintf( '/wp/v2/comments/%d', self::$approved_id ) );
+		$request->set_param( 'post', $comment->comment_post_ID );
+
+		// Run twice to make sure that the update still succeeds even if no DB
+		// rows are updated.
+		$response = $this->server->dispatch( $request );
+		$this->assertEquals( 200, $response->get_status() );
+
+		$response = $this->server->dispatch( $request );
+		$this->assertEquals( 200, $response->get_status() );
 	}
 
 	public function test_update_comment_status() {
@@ -2204,6 +2359,16 @@ class WP_Test_REST_Comments_Controller extends WP_Test_REST_Controller_Testcase 
 
 		$response = $this->server->dispatch( $request );
 		$this->assertErrorResponse( 'rest_comment_invalid_id', $response, 404 );
+	}
+
+	public function test_update_comment_invalid_post_id() {
+		wp_set_current_user( self::$admin_id );
+
+		$request = new WP_REST_Request( 'PUT', sprintf( '/wp/v2/comments/%d', self::$approved_id ) );
+		$request->set_param( 'post', REST_TESTS_IMPOSSIBLY_HIGH_NUMBER );
+
+		$response = $this->server->dispatch( $request );
+		$this->assertErrorResponse( 'rest_comment_invalid_post_id', $response, 403 );
 	}
 
 	public function test_update_comment_invalid_permission() {

@@ -123,11 +123,10 @@ class Tests_User_WpDeleteUser extends WP_UnitTestCase {
 		$this->assertEquals( $reassign, $post->post_author );
 	}
 
+	/**
+	 * @group ms-excluded
+	 */
 	public function test_numeric_string_user_id() {
-		if ( is_multisite() ) {
-			$this->markTestSkipped( 'wp_delete_user() does not delete user records in Multisite.' );
-		}
-
 		$u = self::factory()->user->create();
 
 		$u_string = (string) $u;
@@ -144,12 +143,9 @@ class Tests_User_WpDeleteUser extends WP_UnitTestCase {
 
 	/**
 	 * @ticket 33800
+	 * @group ms-excluded
 	 */
 	public function test_should_return_false_for_object_user_id() {
-		if ( is_multisite() ) {
-			$this->markTestSkipped( 'wp_delete_user() does not delete user records in Multisite.' );
-		}
-
 		$u_obj = self::factory()->user->create_and_get();
 		$this->assertFalse( wp_delete_user( $u_obj ) );
 		$this->assertEquals( $u_obj->ID, username_exists( $u_obj->user_login ) );

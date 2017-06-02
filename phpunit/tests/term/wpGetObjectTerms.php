@@ -85,6 +85,25 @@ class Tests_Term_WpGetObjectTerms extends WP_UnitTestCase {
 		}
 	}
 
+	/**
+	 * @ticket 40154
+	 */
+	public function test_taxonomies_passed_to_wp_get_object_terms_filter_should_be_quoted() {
+		register_taxonomy( 'wptests_tax', 'post' );
+		register_taxonomy( 'wptests_tax_2', 'post' );
+
+		add_filter( 'wp_get_object_terms', array( $this, 'wp_get_object_terms_callback' ), 10, 3 );
+		$terms = wp_get_object_terms( 1, array( 'wptests_tax', 'wptests_tax_2' ) );
+		remove_filter( 'wp_get_object_terms', array( $this, 'wp_get_object_terms_callback' ), 10, 3 );
+
+		$this->assertSame( "'wptests_tax', 'wptests_tax_2'", $this->taxonomies );
+	}
+
+	public function wp_get_object_terms_callback( $terms, $object_ids, $taxonomies ) {
+		$this->taxonomies = $taxonomies;
+		return $terms;
+	}
+
 	public function test_orderby_name() {
 		$p = self::factory()->post->create();
 
@@ -689,5 +708,28 @@ class Tests_Term_WpGetObjectTerms extends WP_UnitTestCase {
 		$term_ids = wp_list_pluck( $terms, 'term_id' );
 		// all terms should still be objects
 		return $terms;
+	}
+
+	public function test_verify_args_parameter_can_be_string() {
+		$p = self::factory()->post->create();
+
+		$t1 = self::factory()->term->create( array(
+			'taxonomy' => $this->taxonomy,
+			'name' => 'AAA',
+		) );
+		$t2 = self::factory()->term->create( array(
+			'taxonomy' => $this->taxonomy,
+			'name' => 'ZZZ',
+		) );
+		$t3 = self::factory()->term->create( array(
+			'taxonomy' => $this->taxonomy,
+			'name' => 'JJJ',
+		) );
+
+		wp_set_object_terms( $p, array( $t1, $t2, $t3 ), $this->taxonomy );
+
+		$found = wp_get_object_terms( $p, $this->taxonomy, 'orderby=name&fields=ids' );
+
+		$this->assertEquals( array( $t1, $t3, $t2 ), $found );
 	}
 }

@@ -61,9 +61,6 @@ class Tests_Functions extends WP_UnitTestCase {
 	}
 
 	function test_path_is_absolute() {
-		if ( !is_callable('path_is_absolute') )
-			$this->markTestSkipped();
-
 		$absolute_paths = array(
 			'/',
 			'/foo/',
@@ -81,9 +78,6 @@ class Tests_Functions extends WP_UnitTestCase {
 	}
 
 	function test_path_is_not_absolute() {
-		if ( !is_callable('path_is_absolute') )
-			$this->markTestSkipped();
-
 		$relative_paths = array(
 			'',
 			'.',
@@ -438,6 +432,22 @@ class Tests_Functions extends WP_UnitTestCase {
 			array( array( 1, 2, 3, 4 ), array( 1, '2', 3, '4' ) ),
 			array( array( 1, 2, 3, 4 ), '-1,2,-3,4' ),
 			array( array( 1, 2, 3, 4 ), array( -1, 2, '-3', '4' ) ),
+		);
+	}
+
+	/**
+	 * @dataProvider data_wp_parse_slug_list
+	 */
+	function test_wp_parse_slug_list( $expected, $actual ) {
+		$this->assertSame( $expected, array_values( wp_parse_slug_list( $actual ) ) );
+	}
+
+	function data_wp_parse_slug_list() {
+		return array(
+			array( array( 'apple', 'banana', 'carrot', 'dog' ), 'apple,banana,carrot,dog' ),
+			array( array( 'apple', 'banana', 'carrot', 'dog' ), 'apple, banana,,carrot,dog' ),
+			array( array( 'apple', 'banana', 'carrot', 'dog' ), 'apple banana carrot dog' ),
+			array( array( 'apple', 'banana-carrot', 'd-o-g' ), array( 'apple ', 'banana carrot', 'd o g' ) ),
 		);
 	}
 
@@ -884,7 +894,7 @@ class Tests_Functions extends WP_UnitTestCase {
 	/**
 	 * Tests wp_generate_uuid4().
 	 *
-	 * @covers wp_generate_uuid4()
+	 * @covers ::wp_generate_uuid4
 	 * @ticket 38164
 	 */
 	function test_wp_generate_uuid4() {
@@ -897,5 +907,207 @@ class Tests_Functions extends WP_UnitTestCase {
 
 		$unique_uuids = array_unique( $uuids );
 		$this->assertEquals( $uuids, $unique_uuids );
+	}
+
+	/**
+	 * @ticket 40017
+	 * @dataProvider _wp_get_image_mime
+	 */
+	public function test_wp_get_image_mime( $file, $expected ) {
+		if ( ! is_callable( 'exif_imagetype' ) && ! function_exists( 'getimagesize' ) ) {
+			$this->markTestSkipped( 'The exif PHP extension is not loaded.' );
+		}
+
+		$this->assertEquals( $expected, wp_get_image_mime( $file ) );
+	}
+
+	/**
+	 * @ticket 39550
+	 * @dataProvider _wp_check_filetype_and_ext_data
+	 */
+	function test_wp_check_filetype_and_ext( $file, $filename, $expected ) {
+		if ( ! extension_loaded( 'fileinfo' ) ) {
+			$this->markTestSkipped( 'The fileinfo PHP extension is not loaded.' );
+		}
+
+		$this->assertEquals( $expected, wp_check_filetype_and_ext( $file, $filename ) );
+	}
+
+	/**
+	 * @ticket 39550
+	 * @group ms-excluded
+	 */
+	function test_wp_check_filetype_and_ext_with_filtered_svg() {
+		if ( ! extension_loaded( 'fileinfo' ) ) {
+			$this->markTestSkipped( 'The fileinfo PHP extension is not loaded.' );
+		}
+
+		$file = DIR_TESTDATA . '/uploads/video-play.svg';
+		$filename = 'video-play.svg';
+
+		$expected = array(
+			'ext' => 'svg',
+			'type' => 'image/svg+xml',
+			'proper_filename' => false,
+		);
+
+		add_filter( 'upload_mimes', array( $this, '_filter_mime_types_svg' ) );
+		$this->assertEquals( $expected, wp_check_filetype_and_ext( $file, $filename ) );
+
+		// Cleanup.
+		remove_filter( 'upload_mimes', array( $this, '_test_add_mime_types_svg' ) );
+	}
+
+	/**
+	 * @ticket 39550
+	 * @group ms-excluded
+	 */
+	function test_wp_check_filetype_and_ext_with_filtered_woff() {
+		if ( ! extension_loaded( 'fileinfo' ) ) {
+			$this->markTestSkipped( 'The fileinfo PHP extension is not loaded.' );
+		}
+
+		$file = DIR_TESTDATA . '/uploads/dashicons.woff';
+		$filename = 'dashicons.woff';
+
+		$expected = array(
+			'ext' => 'woff',
+			'type' => 'application/font-woff',
+			'proper_filename' => false,
+		);
+
+		add_filter( 'upload_mimes', array( $this, '_filter_mime_types_woff' ) );
+		$this->assertEquals( $expected, wp_check_filetype_and_ext( $file, $filename ) );
+
+		// Cleanup.
+		remove_filter( 'upload_mimes', array( $this, '_test_add_mime_types_woff' ) );
+	}
+
+	public function _filter_mime_types_svg( $mimes ) {
+		$mimes['svg'] = 'image/svg+xml';
+		return $mimes;
+	}
+
+	public function _filter_mime_types_woff( $mimes ) {
+		$mimes['woff'] = 'application/font-woff';
+		return $mimes;
+	}
+
+	/**
+	 * Data profider for test_wp_get_image_mime();
+	 */
+	public function _wp_get_image_mime() {
+		$data = array(
+			// Standard JPEG.
+			array(
+				DIR_TESTDATA . '/images/test-image.jpg',
+				'image/jpeg',
+			),
+			// Standard GIF.
+			array(
+				DIR_TESTDATA . '/images/test-image.gif',
+				'image/gif',
+			),
+			// Standard PNG.
+			array(
+				DIR_TESTDATA . '/images/test-image.png',
+				'image/png',
+			),
+			// Image with wrong extension.
+			array(
+				DIR_TESTDATA . '/images/test-image-mime-jpg.png',
+				'image/jpeg',
+			),
+			// Not an image.
+			array(
+				DIR_TESTDATA . '/uploads/dashicons.woff',
+				false,
+			),
+		);
+
+		return $data;
+	}
+
+	public function _wp_check_filetype_and_ext_data() {
+		$data = array(
+			// Standard image.
+			array(
+				DIR_TESTDATA . '/images/canola.jpg',
+				'canola.jpg',
+				array(
+					'ext' => 'jpg',
+					'type' => 'image/jpeg',
+					'proper_filename' => false,
+				),
+			),
+			// Image with wrong extension.
+			array(
+				DIR_TESTDATA . '/images/test-image-mime-jpg.png',
+				'test-image-mime-jpg.png',
+				array(
+					'ext' => 'jpg',
+					'type' => 'image/jpeg',
+					'proper_filename' => 'test-image-mime-jpg.jpg',
+				),
+			),
+			// Image without extension.
+			array(
+				DIR_TESTDATA . '/images/test-image-no-extension',
+				'test-image-no-extension',
+				array(
+					'ext' => false,
+					'type' => false,
+					'proper_filename' => false,
+				),
+			),
+			// Valid non-image file with an image extension.
+			array(
+				DIR_TESTDATA . '/formatting/big5.txt',
+				'big5.jpg',
+				array(
+					'ext' => 'jpg',
+					'type' => 'image/jpeg',
+					'proper_filename' => false,
+				),
+			),
+			// Non-image file not allowed.
+			array(
+				DIR_TESTDATA . '/export/crazy-cdata.xml',
+				'crazy-cdata.xml',
+				array(
+					'ext' => false,
+					'type' => false,
+					'proper_filename' => false,
+				),
+			),
+		);
+
+		// Test a few additional file types on single sites.
+		if ( ! is_multisite() ) {
+			$data = array_merge( $data, array(
+				// Standard non-image file.
+				array(
+					DIR_TESTDATA . '/formatting/big5.txt',
+					'big5.txt',
+					array(
+						'ext' => 'txt',
+						'type' => 'text/plain',
+						'proper_filename' => false,
+					),
+				),
+				// Non-image file with wrong sub-type.
+				array(
+					DIR_TESTDATA . '/uploads/pages-to-word.docx',
+					'pages-to-word.docx',
+					array(
+						'ext' => 'docx',
+						'type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+						'proper_filename' => false,
+					),
+				),
+			) );
+		}
+
+		return $data;
 	}
 }

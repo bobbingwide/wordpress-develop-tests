@@ -12,6 +12,9 @@ class Tests_Multisite_Network extends WP_UnitTestCase {
 	protected $plugin_hook_count = 0;
 	protected $suppress = false;
 
+	protected static $different_network_id;
+	protected static $different_site_ids = array();
+
 	function setUp() {
 		global $wpdb;
 		parent::setUp();
@@ -23,6 +26,33 @@ class Tests_Multisite_Network extends WP_UnitTestCase {
 		$wpdb->suppress_errors( $this->suppress );
 		$current_site->id = 1;
 		parent::tearDown();
+	}
+
+	public static function wpSetUpBeforeClass( $factory ) {
+		self::$different_network_id = $factory->network->create( array( 'domain' => 'wordpress.org', 'path' => '/' ) );
+
+		$sites = array(
+			array( 'domain' => 'wordpress.org', 'path' => '/',     'site_id' => self::$different_network_id ),
+			array( 'domain' => 'wordpress.org', 'path' => '/foo/', 'site_id' => self::$different_network_id ),
+			array( 'domain' => 'wordpress.org', 'path' => '/bar/', 'site_id' => self::$different_network_id ),
+		);
+
+		foreach ( $sites as $site ) {
+			self::$different_site_ids[] = $factory->blog->create( $site );
+		}
+	}
+
+	public static function wpTearDownAfterClass() {
+		global $wpdb;
+
+		foreach( self::$different_site_ids as $id ) {
+			wpmu_delete_blog( $id, true );
+		}
+
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->sitemeta} WHERE site_id = %d", self::$different_network_id ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->site} WHERE id= %d", self::$different_network_id ) );
+
+		wp_update_network_site_counts();
 	}
 
 	/**
@@ -66,15 +96,14 @@ class Tests_Multisite_Network extends WP_UnitTestCase {
 	function test_get_main_network_id_after_network_delete() {
 		global $wpdb, $current_site;
 
-		$id = self::factory()->network->create();
-		$temp_id = $id + 1;
+		$temp_id = self::$different_network_id + 1;
 
-		$current_site->id = (int) $id;
+		$current_site->id = (int) self::$different_network_id;
 		$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->site} SET id=%d WHERE id=1", $temp_id ) );
 		$main_network_id = get_main_network_id();
 		$wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->site} SET id=1 WHERE id=%d", $temp_id ) );
 
-		$this->assertEquals( $id, $main_network_id );
+		$this->assertEquals( self::$different_network_id, $main_network_id );
 	}
 
 	function test_get_main_network_id_filtered() {
@@ -154,6 +183,55 @@ class Tests_Multisite_Network extends WP_UnitTestCase {
 		wp_update_network_counts();
 
 		$this->assertEquals( $site_count_start + 1, $actual );
+	}
+
+	/**
+	 * @ticket 37865
+	 */
+	public function test_get_blog_count_on_different_network() {
+		global $current_site, $wpdb;
+
+		// switch_to_network()...
+		$orig_network_id = $current_site->id;
+		$orig_wpdb_network_id = $wpdb->siteid;
+		$current_site->id = self::$different_network_id;
+		$wpdb->siteid = self::$different_network_id;
+		wp_update_network_site_counts();
+		$current_site->id = $orig_network_id;
+		$wpdb->siteid = $orig_wpdb_network_id;
+
+		$site_count = get_blog_count( self::$different_network_id );
+
+		$this->assertEquals( count( self::$different_site_ids ), $site_count );
+	}
+
+	/**
+	 * @ticket 37866
+	 */
+	public function test_get_user_count_on_different_network() {
+		global $current_site, $wpdb;
+
+		wp_update_network_user_counts();
+		$current_network_user_count = get_user_count();
+
+		// switch_to_network()...
+		$orig_network_id = $current_site->id;
+		$orig_wpdb_network_id = $wpdb->siteid;
+		$current_site->id = self::$different_network_id;
+		$wpdb->siteid = self::$different_network_id;
+
+		// Add another user to fake the network user count to be different.
+		wpmu_create_user( 'user', 'pass', 'email' );
+
+		wp_update_network_user_counts();
+
+		// restore_current_network()...
+		$current_site->id = $orig_network_id;
+		$wpdb->siteid = $orig_wpdb_network_id;
+
+		$user_count = get_user_count( self::$different_network_id );
+
+		$this->assertEquals( $current_network_user_count + 1, $user_count );
 	}
 
 	/**
@@ -297,6 +375,234 @@ class Tests_Multisite_Network extends WP_UnitTestCase {
 		update_site_option( 'dashboard_blog', $blog_id );
 		$dashboard_blog = get_dashboard_blog();
 		$this->assertEquals( $blog_id, $dashboard_blog->blog_id );
+	}
+
+	/**
+	 * @ticket 37528
+	 */
+	function test_wp_update_network_site_counts() {
+		update_network_option( null, 'blog_count', 40 );
+
+		$expected = get_sites( array(
+			'network_id' => get_current_network_id(),
+			'spam'       => 0,
+			'deleted'    => 0,
+			'archived'   => 0,
+			'count'      => true,
+		) );
+
+		wp_update_network_site_counts();
+
+		$result = get_blog_count();
+		$this->assertEquals( $expected, $result );
+	}
+
+	/**
+	 * @ticket 37528
+	 */
+	function test_wp_update_network_site_counts_on_different_network() {
+		update_network_option( self::$different_network_id, 'blog_count', 40 );
+
+		wp_update_network_site_counts( self::$different_network_id );
+
+		$result = get_blog_count( self::$different_network_id );
+		$this->assertEquals( 3, $result );
+	}
+
+	/**
+	 * @ticket 40349
+	 */
+	public function test_wp_update_network_user_counts() {
+		global $wpdb;
+
+		update_network_option( null, 'user_count', 40 );
+
+		$expected = $wpdb->get_var( "SELECT COUNT(ID) as c FROM $wpdb->users WHERE spam = '0' AND deleted = '0'" );
+
+		wp_update_network_user_counts();
+
+		$result = get_user_count();
+		$this->assertEquals( $expected, $result );
+	}
+
+	/**
+	 * @ticket 40349
+	 */
+	public function test_wp_update_network_user_counts_on_different_network() {
+		global $wpdb;
+
+		update_network_option( self::$different_network_id, 'user_count', 40 );
+
+		$expected = $wpdb->get_var( "SELECT COUNT(ID) as c FROM $wpdb->users WHERE spam = '0' AND deleted = '0'" );
+
+		wp_update_network_user_counts( self::$different_network_id );
+
+		$result = get_user_count( self::$different_network_id );
+		$this->assertEquals( $expected, $result );
+	}
+
+	/**
+	 * @ticket 40386
+	 */
+	public function test_wp_update_network_counts() {
+		delete_network_option( null, 'blog_count' );
+		delete_network_option( null, 'user_count' );
+
+		wp_update_network_counts();
+
+		$site_count = (int) get_blog_count();
+		$user_count = (int) get_user_count();
+
+		$this->assertTrue( $site_count > 0 && $user_count > 0 );
+	}
+
+	/**
+	 * @ticket 40386
+	 */
+	public function test_wp_update_network_counts_on_different_network() {
+		delete_network_option( self::$different_network_id, 'blog_count' );
+		delete_network_option( self::$different_network_id, 'user_count' );
+
+		wp_update_network_counts( self::$different_network_id );
+
+		$site_count = (int) get_blog_count( self::$different_network_id );
+		$user_count = (int) get_user_count( self::$different_network_id );
+
+		$this->assertTrue( $site_count > 0 && $user_count > 0 );
+	}
+
+	/**
+	 * @ticket 40489
+	 * @dataProvider data_wp_is_large_network
+	 */
+	public function test_wp_is_large_network( $using, $count, $expected, $different_network ) {
+		$network_id = $different_network ? self::$different_network_id : null;
+		$network_option = 'users' === $using ? 'user_count' : 'blog_count';
+
+		update_network_option( $network_id, $network_option, $count );
+
+		$result = wp_is_large_network( $using, $network_id );
+		if ( $expected ) {
+			$this->assertTrue( $result );
+		} else {
+			$this->assertFalse( $result );
+		}
+	}
+
+	public function data_wp_is_large_network() {
+		return array(
+			array( 'sites', 10000, false, false ),
+			array( 'sites', 10001, true, false ),
+			array( 'users', 10000, false, false ),
+			array( 'users', 10001, true, false ),
+			array( 'sites', 10000, false, true ),
+			array( 'sites', 10001, true, true ),
+			array( 'users', 10000, false, true ),
+			array( 'users', 10001, true, true ),
+		);
+	}
+
+	/**
+	 * @ticket 40489
+	 * @dataProvider data_wp_is_large_network_filtered_by_component
+	 */
+	public function test_wp_is_large_network_filtered_by_component( $using, $count, $expected, $different_network ) {
+		$network_id = $different_network ? self::$different_network_id : null;
+		$network_option = 'users' === $using ? 'user_count' : 'blog_count';
+
+		update_network_option( $network_id, $network_option, $count );
+
+		add_filter( 'wp_is_large_network', array( $this, 'filter_wp_is_large_network_for_users' ), 10, 3 );
+		$result = wp_is_large_network( $using, $network_id );
+		remove_filter( 'wp_is_large_network', array( $this, 'filter_wp_is_large_network_for_users' ), 10 );
+
+		if ( $expected ) {
+			$this->assertTrue( $result );
+		} else {
+			$this->assertFalse( $result );
+		}
+	}
+
+	public function data_wp_is_large_network_filtered_by_component() {
+		return array(
+			array( 'sites', 10000, false, false ),
+			array( 'sites', 10001, true, false ),
+			array( 'users', 1000, false, false ),
+			array( 'users', 1001, true, false ),
+			array( 'sites', 10000, false, true ),
+			array( 'sites', 10001, true, true ),
+			array( 'users', 1000, false, true ),
+			array( 'users', 1001, true, true ),
+		);
+	}
+
+	public function filter_wp_is_large_network_for_users( $is_large_network, $using, $count ) {
+		if ( 'users' === $using ) {
+			return $count > 1000;
+		}
+
+		return $is_large_network;
+	}
+
+	/**
+	 * @ticket 40489
+	 * @dataProvider data_wp_is_large_network_filtered_by_network
+	 */
+	public function test_wp_is_large_network_filtered_by_network( $using, $count, $expected, $different_network ) {
+		$network_id = $different_network ? self::$different_network_id : null;
+		$network_option = 'users' === $using ? 'user_count' : 'blog_count';
+
+		update_network_option( $network_id, $network_option, $count );
+
+		add_filter( 'wp_is_large_network', array( $this, 'filter_wp_is_large_network_on_different_network' ), 10, 4 );
+		$result = wp_is_large_network( $using, $network_id );
+		remove_filter( 'wp_is_large_network', array( $this, 'filter_wp_is_large_network_on_different_network' ), 10 );
+
+		if ( $expected ) {
+			$this->assertTrue( $result );
+		} else {
+			$this->assertFalse( $result );
+		}
+	}
+
+	public function data_wp_is_large_network_filtered_by_network() {
+		return array(
+			array( 'sites', 10000, false, false ),
+			array( 'sites', 10001, true, false ),
+			array( 'users', 10000, false, false ),
+			array( 'users', 10001, true, false ),
+			array( 'sites', 1000, false, true ),
+			array( 'sites', 1001, true, true ),
+			array( 'users', 1000, false, true ),
+			array( 'users', 1001, true, true ),
+		);
+	}
+
+	public function filter_wp_is_large_network_on_different_network( $is_large_network, $using, $count, $network_id ) {
+		if ( $network_id === (int) self::$different_network_id ) {
+			return $count > 1000;
+		}
+
+		return $is_large_network;
+	}
+
+	/**
+	 * @ticket 38699
+	 */
+	public function test_wpmu_create_blog_updates_correct_network_site_count() {
+		$original_count = get_blog_count( self::$different_network_id );
+
+		$site_id = self::factory()->blog->create( array(
+			'domain'  => 'example.org',
+			'path'    => '/',
+			'site_id' => self::$different_network_id,
+		) );
+
+		$result = get_blog_count( self::$different_network_id );
+
+		wpmu_delete_blog( $site_id, true );
+
+		$this->assertEquals( $original_count + 1, $result );
 	}
 }
 

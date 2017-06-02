@@ -11,40 +11,38 @@
  * @group multisite
  */
 class Tests_Option_NetworkOption extends WP_UnitTestCase {
-	function test_add_network_option_not_available_on_other_network() {
-		if ( ! is_multisite() ) {
-			$this->markTestSkipped( 'Test requires multisite' );
-		}
 
+	/**
+	 * @group ms-required
+	 */
+	function test_add_network_option_not_available_on_other_network() {
 		$id = self::factory()->network->create();
-		$option = rand_str();
-		$value = rand_str();
+		$option = __FUNCTION__;
+		$value = __FUNCTION__;
 
 		add_site_option( $option, $value );
 		$this->assertFalse( get_network_option( $id, $option, false ) );
 	}
 
+	/**
+	 * @group ms-required
+	 */
 	function test_add_network_option_available_on_same_network() {
-		if ( ! is_multisite() ) {
-			$this->markTestSkipped( 'Test requires multisite' );
-		}
-
 		$id = self::factory()->network->create();
-		$option = rand_str();
-		$value = rand_str();
+		$option = __FUNCTION__;
+		$value = __FUNCTION__;
 
 		add_network_option( $id, $option, $value );
 		$this->assertEquals( $value, get_network_option( $id, $option, false ) );
 	}
 
+	/**
+	 * @group ms-required
+	 */
 	function test_delete_network_option_on_only_one_network() {
-		if ( ! is_multisite() ) {
-			$this->markTestSkipped( 'Test requires multisite' );
-		}
-
 		$id = self::factory()->network->create();
-		$option = rand_str();
-		$value = rand_str();
+		$option = __FUNCTION__;
+		$value = __FUNCTION__;
 
 		add_site_option( $option, $value );
 		add_network_option( $id, $option, $value );
@@ -54,13 +52,10 @@ class Tests_Option_NetworkOption extends WP_UnitTestCase {
 
 	/**
 	 * @ticket 22846
+	 * @group ms-excluded
 	 */
 	public function test_add_network_option_is_not_stored_as_autoload_option() {
-		$key = rand_str();
-
-		if ( is_multisite() ) {
-			$this->markTestSkipped( 'Does not apply when used in multisite.' );
-		}
+		$key = __FUNCTION__;
 
 		add_network_option( null, $key, 'Not an autoload option' );
 
@@ -71,13 +66,10 @@ class Tests_Option_NetworkOption extends WP_UnitTestCase {
 
 	/**
 	 * @ticket 22846
+	 * @group ms-excluded
 	 */
 	public function test_update_network_option_is_not_stored_as_autoload_option() {
-		$key = rand_str();
-
-		if ( is_multisite() ) {
-			$this->markTestSkipped( 'Does not apply when used in multisite.' );
-		}
+		$key = __FUNCTION__;
 
 		update_network_option( null, $key, 'Not an autoload option' );
 

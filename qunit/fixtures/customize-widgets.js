@@ -46,13 +46,24 @@ window._wpCustomizeWidgetsSettings = {
 		}
 	],
 	'l10n': {
-		'saveBtnLabel': 'Apply',
-		'saveBtnTooltip': 'Save and preview changes before publishing them.',
+		'error': 'An error has occurred. Please reload the page and try again.',
+		'navigatePreview': 'You can navigate to other pages on your site while using the Customizer to view and edit the widgets displayed on those pages.',
+		'noAreasShown': 'Your theme has 3 widget areas, but this particular page doesn\u2019t display them.',
+		'noWidgetsFound': 'No widgets found.',
 		'removeBtnLabel': 'Remove',
 		'removeBtnTooltip': 'Trash widget by moving it to the inactive widgets sidebar.',
-		'error': 'An error has occurred. Please reload the page and try again.',
+		'reorderLabelOn': 'Reorder widgets',
+		'reorderModeOff': 'Reorder mode closed',
+		'reorderModeOn': 'Reorder mode enabled',
+		'saveBtnLabel': 'Apply',
+		'saveBtnTooltip': 'Save and preview changes before publishing them.',
+		'someAreasShown': {
+			'1': 'Your theme has 1 other widget area, but this particular page doesn\u2019t display it.',
+			'2': 'Your theme has 2 other widget areas, but this particular page doesn\u2019t display them.'
+		},
+		'widgetMovedDown': 'Widget moved down',
 		'widgetMovedUp': 'Widget moved up',
-		'widgetMovedDown': 'Widget moved down'
+		'widgetsFound': 'Number of widgets found: %d'
 	},
 	'tpl': {
 		'widgetReorderNav': '<div class="widget-reorder-nav"><span class="move-widget" tabindex="0">Move to another area&hellip;</span><span class="move-widget-down" tabindex="0">Move down</span><span class="move-widget-up" tabindex="0">Move up</span></div>',

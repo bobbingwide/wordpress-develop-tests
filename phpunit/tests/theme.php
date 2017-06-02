@@ -189,7 +189,7 @@ class Tests_Theme extends WP_UnitTestCase {
 	function test_default_theme_in_default_theme_list() {
 		$latest_default_theme = WP_Theme::get_core_default_theme();
 		if ( ! $latest_default_theme->exists() || 'twenty' !== substr( $latest_default_theme->get_stylesheet(), 0, 6 ) ) {
-			$this->markTestSkipped( 'No Twenty* series default themes are installed' ); 
+			$this->fail( 'No Twenty* series default themes are installed' ); 
 		}
 		$this->assertContains( $latest_default_theme->get_stylesheet(), $this->default_themes );
 	}
@@ -302,11 +302,43 @@ class Tests_Theme extends WP_UnitTestCase {
 
 		$theme = wp_get_theme();
 		$this->assertEquals( $style, (string) $theme );
-		$this->assertNotSame( false, $theme->errors() );
+		$this->assertNotFalse( $theme->errors() );
 		$this->assertFalse( $theme->exists() );
 
 		// these return the bogus name - perhaps not ideal behaviour?
 		$this->assertEquals($template, get_template());
 		$this->assertEquals($style, get_stylesheet());
+	}
+
+	/**
+	 * Test _wp_keep_alive_customize_changeset_dependent_auto_drafts.
+	 *
+	 * @covers _wp_keep_alive_customize_changeset_dependent_auto_drafts()
+	 */
+	function test_wp_keep_alive_customize_changeset_dependent_auto_drafts() {
+		$nav_created_post_ids = $this->factory()->post->create_many(2, array(
+			'post_status' => 'auto-draft',
+		) );
+		$data = array(
+			'nav_menus_created_posts' => array(
+				'value' => $nav_created_post_ids,
+			),
+		);
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		require_once ABSPATH . WPINC . '/class-wp-customize-manager.php';
+		$wp_customize = new WP_Customize_Manager();
+		do_action( 'customize_register', $wp_customize );
+		$wp_customize->save_changeset_post( array(
+			'data' => $data,
+		) );
+		$this->assertEquals( get_post( $nav_created_post_ids[0] )->post_date, get_post( $wp_customize->changeset_post_id() )->post_date );
+		$this->assertEquals( get_post( $nav_created_post_ids[1] )->post_date, get_post( $wp_customize->changeset_post_id() )->post_date );
+		$wp_customize->save_changeset_post( array(
+			'status' => 'draft',
+			'data' => $data,
+		) );
+		$expected_year = date( 'Y' ) + 100;
+		$this->assertEquals( $expected_year, date( 'Y', strtotime( get_post( $nav_created_post_ids[0] )->post_date ) ) );
+		$this->assertEquals( $expected_year, date( 'Y', strtotime( get_post( $nav_created_post_ids[1] )->post_date ) ) );
 	}
 }

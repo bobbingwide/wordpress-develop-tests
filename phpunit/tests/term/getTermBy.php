@@ -192,4 +192,61 @@ class Tests_Term_GetTermBy extends WP_UnitTestCase {
 		$this->assertSame( $term_id, $found->term_id );
 		$this->assertContains( 'LIMIT 1', $wpdb->last_query );
 	}
+
+	/**
+	 * @ticket 21760
+	 */
+	public function test_prevent_recursion_by_get_terms_filter() {
+		$action = new MockAction();
+
+		add_filter( 'get_terms', array( $action, 'filter' ) );
+		get_term_by( 'name', 'burrito', 'post_tag' );
+		remove_filter( 'get_terms', array( $action, 'filter' ) );
+
+		$this->assertEquals( 0, $action->get_call_count() );
+	}
+
+	/**
+	 * @ticket 21760
+	 */
+	public function test_get_term_by_name_with_string_0() {
+		register_taxonomy( 'wptests_tax', 'post', array( 'hierarchical' => true ) );
+
+		$term_id = $this->factory->term->create( array(
+			'name'     => '0',
+			'taxonomy' => 'wptests_tax',
+		) );
+
+		$found = get_term_by( 'name', '0', 'wptests_tax' );
+		$this->assertSame( $term_id, $found->term_id );
+	}
+
+	/**
+	 * @ticket 21760
+	 */
+	public function test_get_term_by_slug_with_string_0() {
+		register_taxonomy( 'wptests_tax', 'post', array( 'hierarchical' => true ) );
+
+		$term_id = $this->factory->term->create( array(
+			'taxonomy' => 'wptests_tax',
+			'name'     => '0',
+			'slug'     => '0',
+		) );
+
+		$found = get_term_by( 'slug', '0', 'wptests_tax' );
+		$this->assertSame( $term_id, $found->term_id );
+	}
+
+	/**
+	 * @ticket 21760
+	 */
+	public function test_get_term_by_with_empty_string() {
+		register_taxonomy( 'wptests_tax', 'post', array( 'hierarchical' => true ) );
+
+		$found_by_slug = get_term_by( 'slug', '', 'wptests_tax' );
+		$found_by_name = get_term_by( 'name', '', 'wptests_tax' );
+
+		$this->assertFalse( $found_by_slug );
+		$this->assertFalse( $found_by_name );
+	}
 }

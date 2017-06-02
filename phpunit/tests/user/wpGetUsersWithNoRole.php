@@ -7,13 +7,9 @@ class Tests_User_GetUsersWithNoRole extends WP_UnitTestCase {
 
 	/**
 	 * @ticket 22993
+	 * @group ms-excluded
 	 */
 	public function test_get_users_with_no_role_is_accurate() {
-
-		if ( is_multisite() ) {
-			$this->markTestSkipped( 'Test does not run on multisite' );
-		}
-
 		// Setup users
 		$admin = self::factory()->user->create( array(
 			'role' => 'administrator',
@@ -41,13 +37,9 @@ class Tests_User_GetUsersWithNoRole extends WP_UnitTestCase {
 	/**
 	 * @ticket 22993
 	 * @group multisite
+	 * @group ms-required
 	 */
 	public function test_get_users_with_no_role_multisite_is_accurate() {
-
-		if ( ! is_multisite() ) {
-			$this->markTestSkipped( 'Test requires multisite' );
-		}
-
 		// Setup users
 		$admin = self::factory()->user->create( array(
 			'role' => 'administrator',

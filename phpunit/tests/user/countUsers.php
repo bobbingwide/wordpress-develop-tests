@@ -9,13 +9,9 @@ class Tests_User_CountUsers extends WP_UnitTestCase {
 	 * @ticket 22993
 	 *
 	 * @dataProvider data_count_users_strategies
+	 * @group ms-excluded
 	 */
 	public function test_count_users_is_accurate( $strategy ) {
-
-		if ( is_multisite() ) {
-			$this->markTestSkipped( 'Test does not run on multisite' );
-		}
-
 		// Setup users
 		$admin = self::factory()->user->create( array(
 			'role' => 'administrator',
@@ -57,15 +53,11 @@ class Tests_User_CountUsers extends WP_UnitTestCase {
 	/**
 	 * @ticket 22993
 	 * @group multisite
+	 * @group ms-required
 	 *
 	 * @dataProvider data_count_users_strategies
 	 */
 	public function test_count_users_multisite_is_accurate( $strategy ) {
-
-		if ( ! is_multisite() ) {
-			$this->markTestSkipped( 'Test requires multisite' );
-		}
-
 		// Setup users
 		$admin = self::factory()->user->create( array(
 			'role' => 'administrator',
@@ -173,6 +165,31 @@ class Tests_User_CountUsers extends WP_UnitTestCase {
 			'none'          => 0,
 		), $count['avail_roles'] );
 
+	}
+
+	/**
+	 * @ticket 29785
+	 *
+	 * @dataProvider data_count_users_strategies
+	 */
+	public function test_count_users_should_not_count_users_who_are_not_in_posts_table( $strategy ) {
+		global $wpdb;
+
+		// Get a 'before' count for comparison.
+		$count = count_users( $strategy );
+
+		$u = self::factory()->user->create( array(
+			'role' => 'editor',
+		) );
+
+		// Manually delete the user, but leave the capabilities usermeta.
+		$wpdb->delete( $wpdb->users, array(
+			'ID' => $u,
+		) );
+
+		$count2 = count_users( $strategy );
+
+		$this->assertEqualSets( $count, $count2 );
 	}
 
 	function data_count_users_strategies() {

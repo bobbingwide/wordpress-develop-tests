@@ -172,6 +172,19 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		$this->assertEqualSets( $media_types, $data['endpoints'][0]['args']['media_type']['enum'] );
 	}
 
+	public function test_registered_get_item_params() {
+		$id1 = $this->factory->attachment->create_object( $this->test_file, 0, array(
+			'post_mime_type' => 'image/jpeg',
+			'post_excerpt'   => 'A sample caption',
+		) );
+		$request = new WP_REST_Request( 'OPTIONS', sprintf( '/wp/v2/media/%d', $id1 ) );
+		$response = $this->server->dispatch( $request );
+		$data = $response->get_data();
+		$keys = array_keys( $data['endpoints'][0]['args'] );
+		sort( $keys );
+		$this->assertEquals( array( 'context', 'id' ), $keys );
+	}
+
 	public function test_get_items() {
 		wp_set_current_user( 0 );
 		$id1 = $this->factory->attachment->create_object( $this->test_file, 0, array(
@@ -467,6 +480,31 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		$this->assertEquals( 403, $response->get_status() );
 	}
 
+	public function test_get_item_inherit_status_with_invalid_parent() {
+		$attachment_id = $this->factory->attachment->create_object( $this->test_file, REST_TESTS_IMPOSSIBLY_HIGH_NUMBER, array(
+			'post_mime_type' => 'image/jpeg',
+			'post_excerpt'   => 'A sample caption',
+		) );
+		$request = new WP_REST_Request( 'GET', sprintf( '/wp/v2/media/%d', $attachment_id ) );
+		$response = $this->server->dispatch( $request );
+		$data = $response->get_data();
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertEquals( $attachment_id, $data['id'] );
+	}
+
+	public function test_get_item_auto_status_with_invalid_parent_returns_error() {
+		$attachment_id = $this->factory->attachment->create_object( $this->test_file, REST_TESTS_IMPOSSIBLY_HIGH_NUMBER, array(
+			'post_mime_type' => 'image/jpeg',
+			'post_excerpt'   => 'A sample caption',
+			'post_status'    => 'auto-draft',
+		) );
+		$request = new WP_REST_Request( 'GET', sprintf( '/wp/v2/media/%d', $attachment_id ) );
+		$response = $this->server->dispatch( $request );
+
+		$this->assertErrorResponse( 'rest_forbidden', $response, 403 );
+	}
+
 	public function test_create_item() {
 		wp_set_current_user( self::$author_id );
 
@@ -502,7 +540,7 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		$request->set_file_params( array(
 			'file' => array(
 				'file'     => file_get_contents( $this->test_file2 ),
-				'name'     => 'codeispoetry.jpg',
+				'name'     => 'codeispoetry.png',
 				'size'     => filesize( $this->test_file2 ),
 				'tmp_name' => $this->test_file2,
 			),
@@ -1141,6 +1179,26 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 
 		global $wp_rest_additional_fields;
 		$wp_rest_additional_fields = array();
+	}
+
+	public function test_search_item_by_filename() {
+		$id = $this->factory->attachment->create_object( $this->test_file, 0, array(
+			'post_mime_type' => 'image/jpeg',
+		) );
+		$id2 = $this->factory->attachment->create_object( $this->test_file2, 0, array(
+			'post_mime_type' => 'image/png',
+		) );
+
+		$filename = basename( $this->test_file2 );
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/media' );
+		$request->set_param( 'search', $filename );
+		$response = $this->server->dispatch( $request );
+		$data = $response->get_data();
+
+		$this->assertCount( 1, $data );
+		$this->assertEquals( $id2, $data[0]['id'] );
+		$this->assertEquals( 'image/png', $data[0]['mime_type'] );
 	}
 
 	public function additional_field_get_callback( $object, $request ) {

@@ -136,8 +136,32 @@ class Tests_Feeds_RSS2 extends WP_UnitTestCase {
 	}
 
 	/**
-	 * @ticket UT32
+	 * Test that translated feeds have a valid listed date.
+	 * @group 39141
 	 */
+	function test_channel_pubdate_element_translated() {
+		$original_locale = $GLOBALS['wp_locale'];
+		/* @var WP_Locale $locale */
+		$locale = clone $GLOBALS['wp_locale'];
+
+		$locale->weekday[2] = 'Tuesday_Translated';
+		$locale->weekday_abbrev[ 'Tuesday_Translated' ] = 'Tue_Translated';
+
+		$GLOBALS['wp_locale'] = $locale;
+
+		$this->go_to( '/?feed=rss2' );
+		$feed = $this->do_rss2();
+
+		// Restore original locale.
+		$GLOBALS['wp_locale'] = $original_locale;
+
+		$xml = xml_to_array( $feed );
+
+		// Verify the date is untranslated.
+		$pubdate = xml_find( $xml, 'rss', 'channel', 'lastBuildDate' );
+		$this->assertNotContains( 'Tue_Translated', $pubdate[0]['content'] );
+	}
+
 	function test_item_elements() {
 		$this->go_to( '/?feed=rss2' );
 		$feed = $this->do_rss2();
@@ -430,41 +454,4 @@ class Tests_Feeds_RSS2 extends WP_UnitTestCase {
 		// There should only be one <rss> child element.
 		$this->assertEquals( 1, count( $rss ) );
 	}
-
-	/*
-	 * Check to make sure we are not rendering feed templates for invalid feed endpoints.
-	 * e.g. https://example.com/wp-content/feed/
-	 *
-	 * @ticket 30210
-	 */
-	function test_invalid_feed_endpoint() {
-		// An example of an invalid feed endpoint
-		$this->go_to( 'wp-content/feed/' );
-
-		// Queries performed on invalid feed endpoints should never contain posts.
-		$this->assertFalse( have_posts() );
-
-		// This is the assertion. Once the exception is thrown in do_feed, execution stops, preventing futher assertions.
-		$this->setExpectedException( 'WPDieException', 'ERROR: This is not a valid feed.' );
-		do_feed();
-	}
-
-	/*
-	 * Make sure the requested feed is registered before rendering the requested template.
-	 *
-	 * @ticket 30210
-	 */
-	function test_nonexistent_feeds() {
-		global $wp_rewrite;
-		$badfeed = 'badfeed';
-
-		$this->assertNotContains( $badfeed, $wp_rewrite->feeds );
-
-		$this->go_to( '/?feed=' . $badfeed );
-
-		// This is the assertion. Once the exception is thrown in do_feed, execution stops, preventing futher assertions.
-		$this->setExpectedException( 'WPDieException', 'ERROR: This is not a valid feed template.' );
-		do_feed();
-	}
-
 }

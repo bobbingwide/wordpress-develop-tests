@@ -267,6 +267,18 @@ https://w.org</a>'
 		$this->assertEquals( 'image', $prepped['mime'] );
 		$this->assertEquals( 'image', $prepped['type'] );
 		$this->assertEquals( '', $prepped['subtype'] );
+
+		// Test that if author is not found, we return "(no author)" as `display_name`.
+		// The previously used test post contains no author, so we can reuse it.
+		$this->assertEquals( '(no author)', $prepped['authorName'] );
+
+		// Test that if author has HTML entities in display_name, they're decoded correctly.
+		$html_entity_author = self::factory()->user->create( array(
+			'display_name' => 'You &amp; Me',
+		) );
+		$post->post_author = $html_entity_author;
+		$prepped = wp_prepare_attachment_for_js( $post );
+		$this->assertEquals( 'You & Me', $prepped['authorName'] );
 	}
 
 	/**
@@ -388,6 +400,89 @@ BLOB;
 		$post_id = self::factory()->post->create( array( 'post_content' => $blob ) );
 		$srcs = get_post_galleries_images( $post_id );
 		$this->assertEquals( $srcs, array( $ids1_srcs, $ids2_srcs ) );
+	}
+
+	/**
+	 * @ticket 39304
+	 */
+	function test_post_galleries_images_without_global_post() {
+		// Set up an unattached image.
+		$this->factory->attachment->create_object( array(
+			'file' => 'test.jpg',
+			'post_parent' => 0,
+			'post_mime_type' => 'image/jpeg',
+			'post_type' => 'attachment'
+		) );
+
+		$post_id = $this->factory->post->create( array(
+			'post_content' => '[gallery]',
+		) );
+
+		$galleries = get_post_galleries( $post_id, false );
+
+		$this->assertEmpty( $galleries[0]['src'] );
+	}
+
+	/**
+	 * @ticket 39304
+	 */
+	function test_post_galleries_ignores_global_post() {
+		$global_post_id = $this->factory->post->create( array(
+			'post_content' => 'Global Post',
+		) );
+		$post_id = $this->factory->post->create( array(
+			'post_content' => '[gallery]',
+		) );
+		$this->factory->attachment->create_object( array(
+			'file' => 'test.jpg',
+			'post_parent' => $post_id,
+			'post_mime_type' => 'image/jpeg',
+			'post_type' => 'attachment'
+		) );
+		$expected_srcs = array(
+			'http://' . WP_TESTS_DOMAIN . '/wp-content/uploads/test.jpg'
+		);
+
+		// Set the global $post context to the other post.
+		$GLOBALS['post'] = get_post( $global_post_id );
+
+		$galleries = get_post_galleries( $post_id, false );
+
+		$this->assertNotEmpty( $galleries[0]['src'] );
+		$this->assertSame( $galleries[0]['src'], $expected_srcs );
+	}
+
+	/**
+	 * @ticket 39304
+	 */
+	function test_post_galleries_respects_id_attrs() {
+		$post_id = $this->factory->post->create( array(
+			'post_content' => 'No gallery defined',
+		) );
+		$post_id_two = $this->factory->post->create( array(
+			'post_content' => "[gallery id='$post_id']",
+		) );
+		$this->factory->attachment->create_object( array(
+			'file' => 'test.jpg',
+			'post_parent' => $post_id,
+			'post_mime_type' => 'image/jpeg',
+			'post_type' => 'attachment'
+		) );
+		$expected_srcs = array(
+			'http://' . WP_TESTS_DOMAIN . '/wp-content/uploads/test.jpg'
+		);
+
+		$galleries = get_post_galleries( $post_id_two, false );
+
+		// Set the global $post context
+		$GLOBALS['post'] = get_post( $post_id_two );
+		$galleries_with_global_context = get_post_galleries( $post_id_two, false );
+
+		// Check that the global post state doesn't affect the results
+		$this->assertSame( $galleries, $galleries_with_global_context );
+
+		$this->assertNotEmpty( $galleries[0]['src'] );
+		$this->assertSame( $galleries[0]['src'], $expected_srcs );
 	}
 
 	/**
@@ -626,6 +721,43 @@ VIDEO;
 		$this->assertContains( 'width="123"', $actual );
 		$this->assertContains( 'height="456"', $actual );
 		$this->assertContains( 'class="foobar"', $actual );
+	}
+
+	/**
+	 * @ticket 40866
+	 * @depends test_video_shortcode_body
+	 */
+	function test_wp_video_shortcode_youtube_remove_feature() {
+		$actual = wp_video_shortcode( array(
+			'src' => 'https://www.youtube.com/watch?v=i_cVJgIz_Cs&feature=youtu.be',
+		) );
+
+		$this->assertNotContains( 'feature=youtu.be', $actual );
+	}
+
+	/**
+	 * @ticket 40866
+	 * @depends test_video_shortcode_body
+	 */
+	function test_wp_video_shortcode_youtube_force_ssl() {
+		$actual = wp_video_shortcode( array(
+			'src' => 'http://www.youtube.com/watch?v=i_cVJgIz_Cs',
+		) );
+
+		$this->assertContains( 'src="https://www.youtube.com/watch?v=i_cVJgIz_Cs', $actual );
+	}
+
+	/**
+	 * @ticket 40866
+	 * @depends test_video_shortcode_body
+	 */
+	function test_wp_video_shortcode_vimeo_force_ssl_remove_query_args() {
+		$actual = wp_video_shortcode( array(
+			'src' => 'http://vimeo.com/190372437?blah=meh',
+		) );
+
+		$this->assertContains( 'src="https://vimeo.com/190372437', $actual );
+		$this->assertNotContains( 'blah=meh', $actual );
 	}
 
 	/**
@@ -1175,7 +1307,7 @@ EOF;
 
 		// Test to confirm all sources in the array include the same edit hash.
 		foreach ( $sizes as $size ) {
-			$this->assertTrue( false !== strpos( $size, $hash ) );
+			$this->assertNotFalse( strpos( $size, $hash ) );
 		}
 	}
 
