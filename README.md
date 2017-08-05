@@ -4,8 +4,8 @@
 * Donate link: https://www.oik-plugins.com/oik/oik-donate/
 * Tags: PHPUnit, automated, testing
 * Requires at least: 4.8
-* Tested up to: 4.8
-* Stable tag: 4.8
+* Tested up to: 4.8.1
+* Stable tag: 4.8.1
 * License: GPLv2 or later
 * License URI: http://www.gnu.org/licenses/gpl-2.0.html
 * Text Domain: default
@@ -78,7 +78,12 @@ See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.
 
 # What's the process for managing this repo? 
 
+* Method: August 2017
+- Extract http://develop.svn.wordpress.org/tags/4.8.1 to c:\svn\wordpress-develop\4.8.1
+- remaining steps as August 2016
+
 * Method: June 2017
+
 - Extract http://develop.svn.wordpress.org/trunk to C:\svn\wordpress-develop
 - remaining steps as August 2016
 
@@ -121,6 +126,9 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 ## Upgrade Notice 
+# 4.8.1
+Built from http://develop.svn.wordpress.org/tags/4.8.3 ( on 2017/08/04 )
+
 # 4.8 
 Built from http://develop.svn.wordpress.org/trunk ( on 2017/06/02 )
 
@@ -143,6 +151,13 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 ## Changelog 
+# 4.8.1 
+* Changed: Source files updated to tags/4.8.3
+* Changed: Updated readme
+* Tested: With PHPUnit 6.1
+* Tested: With PHP 7.0 and 7.1
+* Tested: With WordPress 4.8 and 4.8.1
+
 # 4.8 
 * Changed: Source files updated to version in /trunk = 4.9-alpha-40870-src
 * Changed: updated readme
