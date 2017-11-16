@@ -541,6 +541,7 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 		// Non-existent post types allowed as of #39610.
 		$r = $menus->insert_auto_draft_post( array( 'post_title' => 'Non-existent', 'post_type' => 'nonexistent' ) );
 		$this->assertInstanceOf( 'WP_Post', $r );
+		$this->assertEquals( $this->wp_customize->changeset_uuid(), get_post_meta( $r->ID, '_customize_changeset_uuid', true ) );
 
 		$r = $menus->insert_auto_draft_post( array( 'post_type' => 'post' ) );
 		$this->assertInstanceOf( 'WP_Error', $r );
@@ -555,6 +556,7 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 		$this->assertEquals( 'Hello World', $r->post_title );
 		$this->assertEquals( '', $r->post_name );
 		$this->assertEquals( 'hello-world', get_post_meta( $r->ID, '_customize_draft_post_name', true ) );
+		$this->assertEquals( $this->wp_customize->changeset_uuid(), get_post_meta( $r->ID, '_customize_changeset_uuid', true ) );
 		$this->assertEquals( 'post', $r->post_type );
 
 		$r = $menus->insert_auto_draft_post( array( 'post_title' => 'Hello World', 'post_type' => 'post', 'post_name' => 'greetings-world', 'post_content' => 'Hi World' ) );
@@ -563,6 +565,7 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 		$this->assertEquals( 'post', $r->post_type );
 		$this->assertEquals( '', $r->post_name );
 		$this->assertEquals( 'greetings-world', get_post_meta( $r->ID, '_customize_draft_post_name', true ) );
+		$this->assertEquals( $this->wp_customize->changeset_uuid(), get_post_meta( $r->ID, '_customize_changeset_uuid', true ) );
 		$this->assertEquals( 'Hi World', $r->post_content );
 	}
 
@@ -716,11 +719,25 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 			'post_author' => $administrator_user_id,
 		) );
 
+		$draft_post_id = $this->factory()->post->create( array(
+			'post_status' => 'draft',
+			'post_title' => 'Draft',
+			'post_author' => $administrator_user_id,
+		) );
+
+		$private_post_id = $this->factory()->post->create( array(
+			'post_status' => 'private',
+			'post_title' => 'Private',
+			'post_author' => $administrator_user_id,
+		) );
+
 		$value = array(
 			'bad',
 			$contributor_post_id,
 			$author_post_id,
 			$administrator_post_id,
+			$draft_post_id,
+			$private_post_id,
 		);
 
 		wp_set_current_user( $contributor_user_id );
@@ -733,7 +750,7 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 
 		wp_set_current_user( $administrator_user_id );
 		$sanitized = $menus->sanitize_nav_menus_created_posts( $value );
-		$this->assertEquals( array( $contributor_post_id, $author_post_id, $administrator_post_id ), $sanitized );
+		$this->assertEquals( array( $contributor_post_id, $author_post_id, $administrator_post_id, $draft_post_id ), $sanitized );
 	}
 
 	/**
@@ -746,15 +763,55 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 		do_action( 'customize_register', $this->wp_customize );
 
 		$post_ids = array();
-		for ( $i = 0; $i < 3; $i += 1 ) {
-			$r = $menus->insert_auto_draft_post( array(
-				'post_title' => 'Auto Draft ' . $i,
-				'post_type' => 'post',
-				'post_name' => 'auto-draft-' . $i,
-			) );
-			$this->assertInstanceOf( 'WP_Post', $r );
-			$post_ids[] = $r->ID;
-		}
+
+		// Auto-draft.
+		$r = $menus->insert_auto_draft_post( array(
+			'post_title' => 'Auto Draft',
+			'post_type' => 'post',
+			'post_name' => 'auto-draft-1',
+		) );
+		$this->assertInstanceOf( 'WP_Post', $r );
+		$post_ids[] = $r->ID;
+
+		// Draft.
+		$r = $menus->insert_auto_draft_post( array(
+			'post_title' => 'Draft',
+			'post_type' => 'post',
+			'post_name' => 'auto-draft-2',
+		) );
+		$this->assertInstanceOf( 'WP_Post', $r );
+		wp_update_post( array(
+			'ID' => $r->ID,
+			'post_status' => 'draft',
+		) );
+		$post_ids[] = $r->ID;
+
+		$drafted_post_ids = $post_ids;
+
+		// Private (this will exclude it from being considered a stub).
+		$r = $menus->insert_auto_draft_post( array(
+			'post_title' => 'Private',
+			'post_type' => 'post',
+			'post_name' => 'auto-draft-3',
+		) );
+		$this->assertInstanceOf( 'WP_Post', $r );
+		wp_update_post( array(
+			'ID' => $r->ID,
+			'post_status' => 'private',
+		) );
+		$post_ids[] = $r->ID;
+		$private_post_id = $r->ID;
+
+		// Trashed (this will exclude it from being considered a stub).
+		$r = $menus->insert_auto_draft_post( array(
+			'post_title' => 'Trash',
+			'post_type' => 'post',
+			'post_name' => 'auto-draft-4',
+		) );
+		$this->assertInstanceOf( 'WP_Post', $r );
+		wp_trash_post( $r->ID );
+		$post_ids[] = $r->ID;
+		$trashed_post_id = $r->ID;
 
 		$pre_published_post_id = $this->factory()->post->create( array( 'post_status' => 'publish' ) );
 
@@ -763,9 +820,13 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 		$setting = $this->wp_customize->get_setting( $setting_id );
 		$this->assertInstanceOf( 'WP_Customize_Filter_Setting', $setting );
 		$this->assertEquals( array( $menus, 'sanitize_nav_menus_created_posts' ), $setting->sanitize_callback );
-		$this->assertEquals( $post_ids, $setting->post_value() );
-		foreach ( $post_ids as $post_id ) {
-			$this->assertEquals( 'auto-draft', get_post_status( $post_id ) );
+		$this->assertEquals( $drafted_post_ids, $setting->post_value() );
+		$this->assertArrayNotHasKey( $private_post_id, $post_ids );
+		$this->assertArrayNotHasKey( $trashed_post_id, $post_ids );
+
+		$this->assertEquals( 'auto-draft', get_post_status( $drafted_post_ids[0] ) );
+		$this->assertEquals( 'draft', get_post_status( $drafted_post_ids[1] ) );
+		foreach ( $drafted_post_ids as $post_id ) {
 			$this->assertEmpty( get_post( $post_id )->post_name );
 			$this->assertNotEmpty( get_post_meta( $post_id, '_customize_draft_post_name', true ) );
 		}
@@ -773,14 +834,17 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 		$save_action_count = did_action( 'customize_save_nav_menus_created_posts' );
 		$setting->save();
 		$this->assertEquals( $save_action_count + 1, did_action( 'customize_save_nav_menus_created_posts' ) );
-		foreach ( $post_ids as $post_id ) {
+		foreach ( $drafted_post_ids as $post_id ) {
 			$this->assertEquals( 'publish', get_post_status( $post_id ) );
 			$this->assertRegExp( '/^auto-draft-\d+$/', get_post( $post_id )->post_name );
 			$this->assertEmpty( get_post_meta( $post_id, '_customize_draft_post_name', true ) );
 		}
 
+		$this->assertEquals( 'private', get_post_status( $private_post_id ) );
+		$this->assertEquals( 'trash', get_post_status( $trashed_post_id ) );
+
 		// Ensure that unique slugs were assigned.
-		$posts = array_map( 'get_post', $post_ids );
+		$posts = array_map( 'get_post', $drafted_post_ids );
 		$post_names = wp_list_pluck( $posts, 'post_name' );
 		$this->assertEqualSets( $post_names, array_unique( $post_names ) );
 	}
@@ -861,19 +925,27 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 	/**
 	 * Test the filter_wp_nav_menu method.
 	 *
-	 * @see WP_Customize_Nav_Menus::filter_wp_nav_menu()
+	 * @covers WP_Customize_Nav_Menus::filter_wp_nav_menu()
+	 * @covers WP_Customize_Nav_Menus::filter_wp_nav_menu_args()
 	 */
 	function test_filter_wp_nav_menu() {
 		do_action( 'customize_register', $this->wp_customize );
 		$menus = new WP_Customize_Nav_Menus( $this->wp_customize );
 
-		$args = $menus->filter_wp_nav_menu_args( array(
+		$original_args = array(
 			'echo'        => true,
 			'menu'        => wp_create_nav_menu( 'Foo' ),
 			'fallback_cb' => 'wp_page_menu',
 			'walker'      => '',
 			'items_wrap'  => '<ul id="%1$s" class="%2$s">%3$s</ul>',
-		) );
+		);
+
+		// Add global namespace prefix to check #41488.
+		if ( version_compare( PHP_VERSION, '5.3', '>=' ) ) {
+			$original_args['fallback_cb'] = '\\' . $original_args['fallback_cb'];
+		}
+
+		$args = $menus->filter_wp_nav_menu_args( $original_args );
 
 		ob_start();
 		wp_nav_menu( $args );
@@ -883,7 +955,10 @@ class Test_WP_Customize_Nav_Menus extends WP_UnitTestCase {
 
 		$this->assertContains( sprintf( ' data-customize-partial-id="nav_menu_instance[%s]"', $args['customize_preview_nav_menus_args']['args_hmac'] ), $result );
 		$this->assertContains( ' data-customize-partial-type="nav_menu_instance"', $result );
-		$this->assertContains( ' data-customize-partial-placement-context="', $result );
+		$this->assertTrue( (bool) preg_match( '/data-customize-partial-placement-context="(.+?)"/', $result, $matches ) );
+		$context = json_decode( html_entity_decode( $matches[1] ), true );
+		$this->assertEquals( $original_args, wp_array_slice_assoc( $context, array_keys( $original_args ) ) ); // Because assertArraySubset is not available in PHP 5.2.
+		$this->assertTrue( $context['can_partial_refresh'] );
 	}
 
 	/**

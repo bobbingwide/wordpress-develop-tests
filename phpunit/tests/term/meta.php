@@ -358,7 +358,7 @@ class Tests_Term_Meta extends WP_UnitTestCase {
 
 		register_taxonomy( 'wptests_tax', 'post' );
 		$t1 = wp_insert_term( 'Foo', 'wptests_tax' );
-		add_term_meta( $t1, 'foo', 'bar' );
+		add_term_meta( $t1['term_id'], 'foo', 'bar' );
 
 		register_taxonomy( 'wptests_tax_2', 'post' );
 		register_taxonomy( 'wptests_tax_3', 'post' );
@@ -402,6 +402,40 @@ class Tests_Term_Meta extends WP_UnitTestCase {
 
 		$this->assertSame( '', get_term_meta( $t, 'foo', true ) );
 		$this->assertSame( '', get_term_meta( $t, 'foo1', true ) );
+	}
+
+	/**
+	 * @ticket 35991
+	 */
+	public function test_has_term_meta() {
+		$t = self::factory()->term->create( array( 'taxonomy' => 'wptests_tax' ) );
+
+		$term_meta_id = add_term_meta( $t, 'foo', 'bar' );
+		$meta = has_term_meta( $t );
+
+		$this->assertSame( 1, count( $meta ) );
+
+		$expected = array(
+			'meta_key' => 'foo',
+			'meta_value' => 'bar',
+			'meta_id' => $term_meta_id,
+			'term_id' => $t,
+		);
+
+		$found = $meta[0];
+
+		$this->assertEquals( $expected, $found );
+	}
+
+	/**
+	 * @ticket 35991
+	 */
+	public function test_has_term_meta_empty_results() {
+		$t = self::factory()->term->create( array( 'taxonomy' => 'wptests_tax' ) );
+
+		$meta = has_term_meta( $t );
+
+		$this->assertSame( array(), $meta );
 	}
 
 	public static function set_cache_results( $q ) {

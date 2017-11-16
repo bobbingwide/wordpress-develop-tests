@@ -85,7 +85,7 @@ class WP_Test_REST_Posts_Controller extends WP_Test_REST_Post_Type_Controller_Te
 		global $wpdb;
 		$expected_clause = str_replace( '{posts}', $wpdb->posts, $pattern );
 		$this->assertCount( 1, $this->posts_clauses );
-		$this->assertEquals( $expected_clause, $this->posts_clauses[0][ $clause ] );
+		$this->assertEquals( $expected_clause, $wpdb->remove_placeholder_escape( $this->posts_clauses[0][ $clause ] ) );
 	}
 
 	public function assertPostsOrderedBy( $pattern ) {
@@ -596,6 +596,24 @@ class WP_Test_REST_Posts_Controller extends WP_Test_REST_Post_Type_Controller_Te
 		$this->assertEquals( 'xyz', $data[0]['slug'] );
 		$this->assertEquals( 'abc', $data[1]['slug'] );
 		$this->assertPostsOrderedBy( '{posts}.post_name DESC' );
+	}
+
+	public function test_get_items_with_orderby_slugs() {
+		$slugs = array( 'burrito', 'taco', 'chalupa' );
+		foreach ( $slugs as $slug ) {
+			$this->factory->post->create( array( 'post_title' => $slug, 'post_name' => $slug, 'post_status' => 'publish' ) );
+		}
+
+		$request = new WP_REST_Request( 'GET', '/wp/v2/posts' );
+		$request->set_param( 'orderby', 'include_slugs' );
+		$request->set_param( 'slug', array( 'taco', 'chalupa', 'burrito' ) );
+
+		$response = $this->server->dispatch( $request );
+		$data = $response->get_data();
+
+		$this->assertEquals( 'taco', $data[0]['slug'] );
+		$this->assertEquals( 'chalupa', $data[1]['slug'] );
+		$this->assertEquals( 'burrito', $data[2]['slug'] );
 	}
 
 	public function test_get_items_with_orderby_relevance() {
@@ -2649,6 +2667,33 @@ class WP_Test_REST_Posts_Controller extends WP_Test_REST_Post_Type_Controller_Te
 		$this->assertEquals( '', $post_template );
 	}
 
+	/**
+	 * Test update_item() with same template that no longer exists.
+	 *
+	 * @covers WP_REST_Posts_Controller::check_template()
+	 * @ticket 39996
+	 */
+	public function test_update_item_with_same_template_that_no_longer_exists() {
+
+		wp_set_current_user( self::$editor_id );
+
+		update_post_meta( self::$post_id, '_wp_page_template', 'post-my-invalid-template.php' );
+
+		$request = new WP_REST_Request( 'PUT', sprintf( '/wp/v2/posts/%d', self::$post_id ) );
+		$params = $this->set_post_data( array(
+			'template' => 'post-my-invalid-template.php',
+		) );
+		$request->set_body_params( $params );
+		$response = $this->server->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+
+		$data = $response->get_data();
+		$post_template = get_page_template_slug( get_post( $data['id'] ) );
+
+		$this->assertEquals( 'post-my-invalid-template.php', $post_template );
+		$this->assertEquals( 'post-my-invalid-template.php', $data['template'] );
+	}
 
 	public function verify_post_roundtrip( $input = array(), $expected_output = array() ) {
 		// Create the post

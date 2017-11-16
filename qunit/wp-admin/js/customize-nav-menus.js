@@ -53,7 +53,7 @@ jQuery( window ).load( function (){
 	// @todo Add more tests for api.Menus.MenusPanel behaviors
 
 	test( 'there an expected MenuSection for the primary menu', function() {
-		var section, controls;
+		var section, controls, lastControl;
 
 		section = api.section( 'nav_menu[' + primaryMenuId + ']' );
 		ok( section, 'section exists' );
@@ -65,7 +65,10 @@ jQuery( window ).load( function (){
 		controls = section.controls();
 		ok( controls[0].extended( api.Menus.MenuNameControl ), 'first control in menu section is MenuNameControl' );
 		ok( controls[1].extended( api.Menus.MenuItemControl ), 'second control in menu section is MenuItemControl' );
-		ok( controls[ controls.length - 1 ].extended( api.Menus.MenuAutoAddControl ), 'last control in menu section is a MenuAutoAddControl' );
+
+		lastControl = controls[ controls.length - 1 ];
+		ok( lastControl.extended( api.Control ), 'last control in menu section is a base Control' );
+		ok( lastControl.params.templateId === 'nav-menu-delete-button', 'last control in menu section has a delete-button template' );
 	} );
 	// @todo Add more tests for api.Menus.MenuSection behaviors
 
@@ -107,11 +110,12 @@ jQuery( window ).load( function (){
 
 	// @todo Add tests for api.Menus.NewMenuSection
 	// @todo Add tests for api.Menus.MenuLocationControl
+	// @todo Add tests for api.Menus.MenuLocationsControl
 	// @todo Add tests for api.Menus.MenuAutoAddControl
 	// @todo Add tests for api.Menus.MenuControl
-	// @todo Add tests for api.Menus.NewMenuControl
 	// @todo Add tests for api.Menus.applySavedData
 	// @todo Add tests for api.Menus.focusMenuItemControl
+	// @todo Add tests for api.Menus.createNavMenu
 
 	test( 'api.Menus.getMenuControl() should return the expected control', function() {
 		var control = api.Menus.getMenuControl( primaryMenuId );

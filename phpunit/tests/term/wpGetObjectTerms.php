@@ -734,6 +734,34 @@ class Tests_Term_WpGetObjectTerms extends WP_UnitTestCase {
 	}
 
 	/**
+	 * @ticket 35925
+	 */
+	public function test_wp_get_object_terms_args_filter() {
+		$taxonomy = 'wptests_tax_4';
+
+		register_taxonomy( $taxonomy, 'post', array( 'sort' => 'true' ) );
+		$post_id = self::factory()->post->create();
+		$terms = array( 'foo', 'bar', 'baz' );
+		$set = wp_set_object_terms( $post_id, $terms, $taxonomy );
+
+		// Filter for maintaining term order
+		add_filter( 'wp_get_object_terms_args', array( $this, 'filter_wp_get_object_terms_args' ), 10, 3 );
+
+		// Test directly
+		$get_object_terms = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'names' ) );
+		$this->assertEquals( $terms, $get_object_terms );
+
+		// Test metabox taxonomy (admin advanced edit)
+		$terms_to_edit = get_terms_to_edit( $post_id, $taxonomy );
+		$this->assertEquals( implode( ',', $terms ), $terms_to_edit );
+	}
+
+	function filter_wp_get_object_terms_args ( $args, $object_ids, $taxonomies ) {
+		$args['orderby'] = 'term_order';
+		return $args;
+	}
+
+	/**
 	 * @ticket 41010
 	 */
 	public function test_duplicate_terms_should_not_be_returned_when_passed_multiple_taxonomies_registered_with_args_array() {

@@ -68,7 +68,7 @@ class Tests_XMLRPC_wp_editTerm extends WP_XMLRPC_UnitTestCase {
 		$result = $this->myxmlrpcserver->wp_editTerm( array( 1, 'editor', 'editor', '', array( 'taxonomy' => 'category' ) ) );
 		$this->assertIXRError( $result );
 		$this->assertEquals( 500, $result->code );
-		$this->assertEquals( __('Empty Term'), $result->message );
+		$this->assertEquals( __('Empty Term.'), $result->message );
 	}
 
 	function test_empty_term_name() {
@@ -86,7 +86,7 @@ class Tests_XMLRPC_wp_editTerm extends WP_XMLRPC_UnitTestCase {
 		$result = $this->myxmlrpcserver->wp_editTerm( array( 1, 'editor', 'editor', self::$post_tag, array( 'taxonomy' => 'post_tag', 'parent' => self::$parent_term ) ) );
 		$this->assertIXRError( $result );
 		$this->assertEquals( 403, $result->code );
-		$this->assertEquals( __( "This taxonomy is not hierarchical so you can't set a parent." ), $result->message );
+		$this->assertEquals( __( 'Cannot set parent term, taxonomy is not hierarchical.' ), $result->message );
 	}
 
 	function test_parent_empty() {
@@ -133,7 +133,7 @@ class Tests_XMLRPC_wp_editTerm extends WP_XMLRPC_UnitTestCase {
 		$result = $this->myxmlrpcserver->wp_editTerm( array( 1, 'editor', 'editor', self::$child_term, array( 'taxonomy' => 'category', 'slug' => $parent_term->slug ) ) );
 		$this->assertIXRError( $result );
 		$this->assertEquals( 500, $result->code );
-		$this->assertEquals( htmlspecialchars( sprintf( __('The slug &#8220;%s&#8221; is already in use by another term'), $parent_term->slug ) ), $result->message );
+		$this->assertEquals( htmlspecialchars( sprintf( __('The slug &#8220;%s&#8221; is already in use by another term.'), $parent_term->slug ) ), $result->message );
 	}
 
 	function test_edit_all_fields() {
@@ -144,5 +144,75 @@ class Tests_XMLRPC_wp_editTerm extends WP_XMLRPC_UnitTestCase {
 
 		$this->assertNotIXRError( $result );
 		$this->assertInternalType( 'boolean', $result );
+	}
+
+	/**
+	 * @ticket 35991
+	 */
+	public function test_update_term_meta() {
+		register_taxonomy( 'wptests_tax', 'post' );
+
+		$t = self::factory()->term->create( array(
+			'taxonomy' => 'wptests_tax',
+		) );
+		$meta_id = add_term_meta( $t, 'foo', 'bar' );
+
+		$this->make_user_by_role( 'editor' );
+
+		$result = $this->myxmlrpcserver->wp_editTerm( array(
+			1,
+			'editor',
+			'editor',
+			$t,
+			array(
+				'taxonomy' => 'wptests_tax',
+				'custom_fields' => array(
+					array(
+						'id' => $meta_id,
+						'key' => 'foo',
+						'value' => 'baz',
+					),
+				),
+			),
+		) );
+
+		$this->assertNotIXRError( $result );
+
+		$found = get_term_meta( $t, 'foo', true );
+		$this->assertSame( 'baz', $found );
+	}
+
+	/**
+	 * @ticket 35991
+	 */
+	public function test_delete_term_meta() {
+		register_taxonomy( 'wptests_tax', 'post' );
+
+		$t = self::factory()->term->create( array(
+			'taxonomy' => 'wptests_tax',
+		) );
+		$meta_id = add_term_meta( $t, 'foo', 'bar' );
+
+		$this->make_user_by_role( 'editor' );
+
+		$result = $this->myxmlrpcserver->wp_editTerm( array(
+			1,
+			'editor',
+			'editor',
+			$t,
+			array(
+				'taxonomy' => 'wptests_tax',
+				'custom_fields' => array(
+					array(
+						'id' => $meta_id,
+					),
+				),
+			),
+		) );
+
+		$this->assertNotIXRError( $result );
+
+		$found = get_term_meta( $t, 'foo' );
+		$this->assertSame( array(), $found );
 	}
 }
