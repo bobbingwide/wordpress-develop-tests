@@ -4,8 +4,8 @@
 * Donate link: https://www.oik-plugins.com/oik/oik-donate/
 * Tags: PHPUnit, automated, testing
 * Requires at least: 4.8
-* Tested up to: 4.8.1
-* Stable tag: 4.8.1
+* Tested up to: 4.9
+* Stable tag: 4.9
 * License: GPLv2 or later
 * License URI: http://www.gnu.org/licenses/gpl-2.0.html
 * Text Domain: default
@@ -67,7 +67,7 @@ For earlier versions of WordPress you can use PHPUnit 5.7
 
 In the same way that WP-a2z.org helps you to develop WordPress code
 this provides you with a dynamic reference of current tests.
-See [develop.wp-a2z.org](http://develop.wp-a2z.org)
+See [develop.wp-a2z.org](https://develop.wp-a2z.org)
 
 
 # Have you actually tried using this? 
@@ -77,6 +77,16 @@ See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.
 
 
 # What's the process for managing this repo? 
+* Method: November 2017
+
+- Extract http://develop.svn.wordpress.org/tags/4.9 to c:\svn\wordpress-develop\4.9
+
+```
+cd \svn\wordpress-develop
+svn co http://develop.svn.wordpress.org/tags/4.9
+```
+
+- remaining steps as August 2016
 
 * Method: August 2017
 - Extract http://develop.svn.wordpress.org/tags/4.8.1 to c:\svn\wordpress-develop\4.8.1
@@ -126,6 +136,9 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 ## Upgrade Notice 
+# 4.9 
+Built from http://develop.svn.wordpress.org/tags/4.9 ( on 2017/11/16 )
+
 # 4.8.1
 Built from http://develop.svn.wordpress.org/tags/4.8.3 ( on 2017/08/04 )
 
@@ -151,6 +164,13 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 ## Changelog 
+# 4.9 
+* Changed: Source files updated to tags/4.9
+* Changed: Updated readme
+* Tested: With PHPUnit 6.1
+* Tested: With PHP 7.0 and 7.1
+* Tested: With WordPress 4.9 and WordPress Multisite
+
 # 4.8.1 
 * Changed: Source files updated to tags/4.8.3
 * Changed: Updated readme
