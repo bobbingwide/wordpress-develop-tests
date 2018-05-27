@@ -2,9 +2,9 @@
 Contributors: bobbingwide
 Donate link: https://www.oik-plugins.com/oik/oik-donate/
 Tags: PHPUnit, automated, testing
-Requires at least: 4.8
-Tested up to: 4.9
-Stable tag: 4.9
+Requires at least: 4.9
+Tested up to: 4.9.1
+Stable tag: 4.9.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: default
@@ -27,7 +27,7 @@ The purpose of this plugin is twofold:
 
 == Installation ==
 
-* Only intended for installation into a WordPress environment where you'll be running your own PHPUnit tests
+* Only intended for installation into a WordPress environment where you'll be running your own PHPUnit tests.
 
 * The zip file is built from the tests folder of the wordpress-develop SVN repository.
 
@@ -37,15 +37,93 @@ The purpose of this plugin is twofold:
 
 
 = What does this plugin do? =
-Nothing as a plugin. You have to invoke the tests using PHPUnit.
-But since we don't provide the phpunit.xml file for the WordPress core tests it won't work.
+Nothing as a plugin. 
+You have to invoke the tests using PHPUnit.
+
+From v4.9.1 we provide a modified version of the phpunit.xml file so that you can attempt to run the WordPress core tests in situ.
+We'll be running the tests in a Windows 10 environment using PHP 7.2.
+The configuration file is different from the one delivered in WordPress core.
+
+Testsuites
+The primary directory is different. You run the tests from the plugin directory, 
+Instead of being called tests/phpunit/tests the directory is phpunit/tests
+
+We expect PHP 7.0, 7.1 or 7.2 so there's no need for the exclude sections
+
+    <testsuites>
+        <!-- Default test suite to run all tests -->
+        <testsuite>
+            <directory suffix=".php">tests/phpunit/tests</directory>
+            <exclude>tests/phpunit/tests/actions/closures.php</exclude>
+            <exclude>tests/phpunit/tests/image/editor.php</exclude>
+            <exclude>tests/phpunit/tests/image/editorGd.php</exclude>
+            <exclude>tests/phpunit/tests/image/editorImagick.php</exclude>
+            <exclude>tests/phpunit/tests/oembed/headers.php</exclude>
+            <file phpVersion="5.3.0">tests/phpunit/tests/actions/closures.php</file>
+            <file phpVersion="5.3.0">tests/phpunit/tests/image/editor.php</file>
+            <file phpVersion="5.3.0">tests/phpunit/tests/image/editorGd.php</file>
+            <file phpVersion="5.3.0">tests/phpunit/tests/image/editorImagick.php</file>
+            <file phpVersion="5.3.0">tests/phpunit/tests/oembed/headers.php</file>
+        </testsuite>
+
+Groups - the exclusion list is the same.
+
+    <groups>
+        <exclude>
+            <group>ajax</group>
+            <group>ms-files</group>
+            <group>ms-required</group>
+            <group>external-http</group>
+        </exclude>
+    </groups>
+
+
+Logging - There's no logging section.
+
+    <logging>
+        <log type="junit" target="tests/phpunit/build/logs/junit.xml" logIncompleteSkipped="false"/>
+    </logging>
+
+We control it from the command line.
+
+
+Listeners - There's no listener section
+
+	<listeners>
+		<listener class="SpeedTrapListener" file="tests/phpunit/includes/speed-trap-listener.php">
+			<arguments>
+				<array>
+					<element key="slowThreshold">
+						<integer>150</integer>
+					</element>
+				</array>
+			</arguments>
+		</listener>
+	</listeners>
+	
+Filter - There's no filter section - since we don't do code coverage
+	
+	<filter>
+		<whitelist processUncoveredFilesFromWhitelist="true">
+			<directory suffix=".php">src</directory>
+		</whitelist>
+	</filter>
+	
+PHP const - same as for core
+    <php>
+        <const name="WP_RUN_CORE_TESTS" value="1" />
+    </php>
+
+
 
 = What would happen if I did actually run this? =
 If you activate the plugin then nothing is expected to happen since it doesn't contain any code. 
 
 
 If you run PHPUnit then quite a lot might happen. 
-If you had happened to configure your database the same as your live site then you could destroy your live site.
+And if you had happened to configure your database the same as your live site then you could destroy your live site.
+But probably not completely! 
+
 
 
 = Can I run the tests from my WordPress site? =

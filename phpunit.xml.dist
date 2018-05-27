@@ -1,0 +1,29 @@
+<phpunit
+	bootstrap="../../plugins/oik-batch/oik-wp.php"
+	backupGlobals="false"
+	colors="false"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	>
+	<!-- for PHPUnit 5.7, 6.1, 6.2 -->
+	<testsuites>
+		<testsuite>
+			<directory suffix=".php">phpunit/tests</directory>
+				<!-- We expect PHP 7.0, 7.1 or 7.2 -->
+		</testsuite>
+	</testsuites>
+	
+    <groups>
+        <exclude>
+            <group>ajax</group>
+            <group>ms-files</group>
+            <group>ms-required</group>
+            <group>external-http</group>
+        </exclude>
+    </groups>
+		
+    <php>
+        <const name="WP_RUN_CORE_TESTS" value="1" />
+    </php>
+</phpunit>
