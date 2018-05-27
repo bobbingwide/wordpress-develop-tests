@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: WordPress Importer
-Plugin URI: http://wordpress.org/extend/plugins/wordpress-importer/
+Plugin URI: https://wordpress.org/plugins/wordpress-importer/
 Description: Import posts, pages, comments, custom fields, categories, tags and more from a WordPress export file.
 Author: wordpressdotorg
-Author URI: http://wordpress.org/
-Version: 0.6.3
+Author URI: https://wordpress.org/
+Version: 0.6.5-alpha
 Text Domain: wordpress-importer
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -262,7 +262,7 @@ class WP_Import extends WP_Importer {
 
 <?php if ( ! empty( $this->authors ) ) : ?>
 	<h3><?php _e( 'Assign Authors', 'wordpress-importer' ); ?></h3>
-	<p><?php _e( 'To make it easier for you to edit and save the imported content, you may want to reassign the author of the imported item to an existing user of this site. For example, you may want to import all the entries as <code>admin</code>s entries.', 'wordpress-importer' ); ?></p>
+	<p><?php _e( 'To make it simpler for you to edit and save the imported content, you may want to reassign the author of the imported item to an existing user of this site, such as your primary administrator account.', 'wordpress-importer' ); ?></p>
 <?php if ( $this->allow_create_users() ) : ?>
 	<p><?php printf( __( 'If a new user is created by WordPress, a new password will be randomly generated and the new user&#8217;s role will be set as %s. Manually changing the new user&#8217;s details will be necessary.', 'wordpress-importer' ), esc_html( get_option('default_role') ) ); ?></p>
 <?php endif; ?>
@@ -315,11 +315,19 @@ class WP_Import extends WP_Importer {
 			echo ' <input type="text" name="user_new['.$n.']" value="'. $value .'" /><br />';
 		}
 
-		if ( ! $create_users && $this->version == '1.0' )
+		if ( ! $create_users && $this->version == '1.0' ) {
 			_e( 'assign posts to an existing user:', 'wordpress-importer' );
-		else
+		} else {
 			_e( 'or assign posts to an existing user:', 'wordpress-importer' );
-		wp_dropdown_users( array( 'name' => "user_map[$n]", 'multi' => true, 'show_option_all' => __( '- Select -', 'wordpress-importer' ) ) );
+		}
+
+		wp_dropdown_users( array(
+			'name'            => "user_map[$n]",
+			'multi'           => true,
+			'show_option_all' => __( '- Select -', 'wordpress-importer' ),
+			'show'            => 'display_name_with_login',
+		) );
+
 		echo '<input type="hidden" name="imported_authors['.$n.']" value="' . esc_attr( $author['author_login'] ) . '" />';
 
 		if ( $this->version != '1.0' )
@@ -786,6 +794,7 @@ class WP_Import extends WP_Importer {
 					if ( ! $post_exists || ! comment_exists( $comment['comment_author'], $comment['comment_date'] ) ) {
 						if ( isset( $inserted_comments[$comment['comment_parent']] ) )
 							$comment['comment_parent'] = $inserted_comments[$comment['comment_parent']];
+						$comment = wp_slash( $comment );
 						$comment = wp_filter_comment( $comment );
 						$inserted_comments[$key] = wp_insert_comment( $comment );
 						do_action( 'wp_import_insert_comment', $inserted_comments[$key], $comment, $comment_post_ID, $post );
@@ -988,7 +997,13 @@ class WP_Import extends WP_Importer {
 			return new WP_Error( 'upload_dir_error', $upload['error'] );
 
 		// fetch the remote url and write it to the placeholder file
-		$headers = wp_get_http( $url, $upload['file'] );
+		$remote_response = wp_safe_remote_get( $url, array(
+			'timeout' => 300,
+            		'stream' => true,
+            		'filename' => $upload['file'],
+        	) );
+
+		$headers = wp_remote_retrieve_headers( $remote_response );
 
 		// request failed
 		if ( ! $headers ) {
@@ -996,10 +1011,12 @@ class WP_Import extends WP_Importer {
 			return new WP_Error( 'import_file_error', __('Remote server did not respond', 'wordpress-importer') );
 		}
 
+		$remote_response_code = wp_remote_retrieve_response_code( $remote_response );
+
 		// make sure the fetch was successful
-		if ( $headers['response'] != '200' ) {
+		if ( $remote_response_code != '200' ) {
 			@unlink( $upload['file'] );
-			return new WP_Error( 'import_file_error', sprintf( __('Remote server returned error response %1$d %2$s', 'wordpress-importer'), esc_html($headers['response']), get_status_header_desc($headers['response']) ) );
+			return new WP_Error( 'import_file_error', sprintf( __('Remote server returned error response %1$d %2$s', 'wordpress-importer'), esc_html($remote_response_code), get_status_header_desc($remote_response_code) ) );
 		}
 
 		$filesize = filesize( $upload['file'] );
@@ -1048,8 +1065,10 @@ class WP_Import extends WP_Importer {
 			if ( isset( $this->processed_posts[$parent_id] ) )
 				$local_parent_id = $this->processed_posts[$parent_id];
 
-			if ( $local_child_id && $local_parent_id )
+			if ( $local_child_id && $local_parent_id ) {
 				$wpdb->update( $wpdb->posts, array( 'post_parent' => $local_parent_id ), array( 'ID' => $local_child_id ), '%d', '%d' );
+				clean_post_cache( $local_child_id );
+			}
 		}
 
 		// all other posts/terms are imported, retry menu items with missing associated object
@@ -1115,7 +1134,6 @@ class WP_Import extends WP_Importer {
 	// Display import page title
 	function header() {
 		echo '<div class="wrap">';
-		screen_icon();
 		echo '<h2>' . __( 'Import WordPress', 'wordpress-importer' ) . '</h2>';
 
 		$updates = get_plugin_updates();
@@ -1206,7 +1224,7 @@ class WP_Import extends WP_Importer {
 } // class_exists( 'WP_Importer' )
 
 function wordpress_importer_init() {
-	load_plugin_textdomain( 'wordpress-importer', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+	load_plugin_textdomain( 'wordpress-importer' );
 
 	/**
 	 * WordPress Importer object for registering the import callback
