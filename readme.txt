@@ -3,8 +3,8 @@ Contributors: bobbingwide
 Donate link: https://www.oik-plugins.com/oik/oik-donate/
 Tags: PHPUnit, automated, testing
 Requires at least: 4.9
-Tested up to: 4.9.1
-Stable tag: 4.9.1
+Tested up to: 4.9.6
+Stable tag: 4.9.6
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: default
@@ -41,8 +41,9 @@ Nothing as a plugin.
 You have to invoke the tests using PHPUnit.
 
 From v4.9.1 we provide a modified version of the phpunit.xml file so that you can attempt to run the WordPress core tests in situ.
-We'll be running the tests in a Windows 10 environment using PHP 7.2.
-The configuration file is different from the one delivered in WordPress core.
+- We'll be running the tests in a Windows 10 environment using PHP 7.2.
+- The configuration file is different from the one delivered in WordPress core.
+- Note: The tests do not run to completion. That is, they don't actually work when run in situ.
 
 Testsuites
 The primary directory is different. You run the tests from the plugin directory, 
@@ -154,6 +155,18 @@ See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.
 
 
 = What's the process for managing this repo? =
+Method: May 2018 
+
+- Extract http://develop.svn.wordpress.org/tags/4.9.6 to c:\svn\wordpress-develop\4.9.6
+
+```
+cd \svn\wordpress-develop
+svn co http://develop.svn.wordpress.org/tags/4.9.6
+```
+
+- remaining steps as August 2016
+
+
 Method: November 2017
 
 - Extract http://develop.svn.wordpress.org/tags/4.9 to c:\svn\wordpress-develop\4.9
@@ -213,6 +226,9 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 == Upgrade Notice ==
+= 4.9.6 = 
+Built from http://develop.svn.wordpress.org/tags/4.9.6 ( on 2018/05/27 )
+
 = 4.9 = 
 Built from http://develop.svn.wordpress.org/tags/4.9 ( on 2017/11/16 )
 
@@ -241,6 +257,16 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 == Changelog ==
+= 4.9.6 = 
+* Changed: Source files updated to tags/4.9.6
+* Changed: Updated readme, noting that in situ PHPUnit tests don't actually work
+* Tested: With PHPUnit 6.2
+* Tested: With PHP 7.1 and 7.2
+* Tested: With WordPress 4.9.6 and WordPress Multisite
+
+= 4.9.1 = 
+* Changed: Incomplete change to attempt to run PHPUnit tests in situ.
+
 = 4.9 = 
 * Changed: Source files updated to tags/4.9
 * Changed: Updated readme
@@ -299,5 +325,4 @@ Read about:
 - [PHPUnit 5.7](https://phpunit.de/manual/5.7/en/index.html)
 - [PHPUnit 6.2](https://phpunit.de/manual/6.2/en/index.html) 
 - [Automated testing on make.wordpress.org](https://make.wordpress.org/core/handbook/automated-testing)
-- [
 
