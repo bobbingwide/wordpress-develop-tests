@@ -16,6 +16,8 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 	protected static $author_id;
 	protected static $contributor_id;
 	protected static $uploader_id;
+	protected static $rest_after_insert_attachment_count;
+	protected static $rest_insert_attachment_count;
 
 	public static function wpSetUpBeforeClass( $factory ) {
 		self::$superadmin_id = $factory->user->create( array(
@@ -697,6 +699,20 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		$this->assertEquals( '', $attachment['alt_text'] );
 	}
 
+	/**
+	 * @ticket 40861
+	 */
+	public function test_create_item_ensure_relative_path() {
+		wp_set_current_user( self::$author_id );
+		$request = new WP_REST_Request( 'POST', '/wp/v2/media' );
+		$request->set_header( 'Content-Type', 'image/jpeg' );
+		$request->set_header( 'Content-Disposition', 'attachment; filename=canola.jpg' );
+		$request->set_body( file_get_contents( $this->test_file ) );
+		$response   = rest_get_server()->dispatch( $request );
+		$attachment = $response->get_data();
+		$this->assertNotContains( ABSPATH, get_post_meta( $attachment['id'], '_wp_attached_file', true ) );
+	}
+
 	public function test_update_item() {
 		wp_set_current_user( self::$editor_id );
 		$attachment_id = $this->factory->attachment->create_object( $this->test_file, 0, array(
@@ -914,9 +930,9 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 			array(
 				// Raw values.
 				array(
-					'title'   => '<a href="#" target="_blank" data-unfiltered=true>link</a>',
-					'description' => '<a href="#" target="_blank" data-unfiltered=true>link</a>',
-					'caption' => '<a href="#" target="_blank" data-unfiltered=true>link</a>',
+					'title'   => '<a href="#" target="_blank" unfiltered=true>link</a>',
+					'description' => '<a href="#" target="_blank" unfiltered=true>link</a>',
+					'caption' => '<a href="#" target="_blank" unfiltered=true>link</a>',
 				),
 				// Expected returned values.
 				array(
@@ -1074,12 +1090,33 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		$this->check_post_data( $attachment, $data, 'embed', $response->get_links() );
 	}
 
+	public function test_prepare_item_limit_fields() {
+		$attachment_id = $this->factory->attachment->create_object(
+			$this->test_file, 0, array(
+				'post_mime_type' => 'image/jpeg',
+				'post_excerpt'   => 'A sample caption',
+				'post_author'    => self::$editor_id,
+			)
+		);
+		wp_set_current_user( self::$editor_id );
+		$endpoint = new WP_REST_Attachments_Controller( 'post' );
+		$request  = new WP_REST_Request( 'GET', sprintf( '/wp/v2/media/%d', $attachment_id ) );
+		$request->set_param( 'context', 'edit' );
+		$request->set_param( '_fields', 'id,slug' );
+		$obj      = get_post( $attachment_id );
+		$response = $endpoint->prepare_item_for_response( $obj, $request );
+		$this->assertEquals( array(
+			'id',
+			'slug',
+		), array_keys( $response->get_data() ) );
+	}
+
 	public function test_get_item_schema() {
 		$request = new WP_REST_Request( 'OPTIONS', '/wp/v2/media' );
 		$response = $this->server->dispatch( $request );
 		$data = $response->get_data();
 		$properties = $data['schema']['properties'];
-		$this->assertEquals( 24, count( $properties ) );
+		$this->assertEquals( 26, count( $properties ) );
 		$this->assertArrayHasKey( 'author', $properties );
 		$this->assertArrayHasKey( 'alt_text', $properties );
 		$this->assertArrayHasKey( 'caption', $properties );
@@ -1091,6 +1128,7 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		$this->assertArrayHasKey( 'comment_status', $properties );
 		$this->assertArrayHasKey( 'date', $properties );
 		$this->assertArrayHasKey( 'date_gmt', $properties );
+		$this->assertArrayHasKey( 'generated_slug', $properties );
 		$this->assertArrayHasKey( 'guid', $properties );
 		$this->assertArrayHasKey( 'id', $properties );
 		$this->assertArrayHasKey( 'link', $properties );
@@ -1102,6 +1140,7 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		$this->assertArrayHasKey( 'modified_gmt', $properties );
 		$this->assertArrayHasKey( 'post', $properties );
 		$this->assertArrayHasKey( 'ping_status', $properties );
+		$this->assertArrayHasKey( 'permalink_template', $properties );
 		$this->assertArrayHasKey( 'status', $properties );
 		$this->assertArrayHasKey( 'slug', $properties );
 		$this->assertArrayHasKey( 'source_url', $properties );
@@ -1211,6 +1250,55 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		}
 	}
 
+	public function test_links_exist() {
+
+		wp_set_current_user( self::$editor_id );
+
+		$post = self::factory()->attachment->create( array( 'post_author' => self::$editor_id ) );
+		$this->assertGreaterThan( 0, $post );
+
+		$request = new WP_REST_Request( 'GET', "/wp/v2/media/{$post}" );
+		$request->set_query_params( array( 'context' => 'edit' ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$links    = $response->get_links();
+
+		$this->assertArrayHasKey( 'self', $links );
+		$this->assertArrayHasKey( 'author', $links );
+
+		$this->assertCount( 1, $links['author'] );
+		$this->assertArrayHasKey( 'embeddable', $links['author'][0]['attributes'] );
+		$this->assertTrue( $links['author'][0]['attributes']['embeddable'] );
+	}
+
+	public function test_publish_action_ldo_not_registered() {
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'OPTIONS', '/wp/v2/media' ) );
+		$data     = $response->get_data();
+		$schema   = $data['schema'];
+
+		$this->assertArrayHasKey( 'links', $schema );
+		$publish = wp_list_filter( $schema['links'], array( 'rel' => 'https://api.w.org/action-publish' ) );
+
+		$this->assertCount( 0, $publish, 'LDO not found on schema.' );
+	}
+
+	public function test_publish_action_link_does_not_exists() {
+
+		wp_set_current_user( self::$editor_id );
+
+		$post = self::factory()->attachment->create( array( 'post_author' => self::$editor_id ) );
+		$this->assertGreaterThan( 0, $post );
+
+		$request = new WP_REST_Request( 'GET', "/wp/v2/media/{$post}" );
+		$request->set_query_params( array( 'context' => 'edit' ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$links    = $response->get_links();
+
+		$this->assertArrayNotHasKey( 'https://api.w.org/action-publish', $links );
+	}
+
 	public function tearDown() {
 		parent::tearDown();
 		if ( file_exists( $this->test_file ) ) {
@@ -1219,6 +1307,9 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		if ( file_exists( $this->test_file2 ) ) {
 			unlink( $this->test_file2 );
 		}
+
+		remove_action( 'rest_insert_attachment', array( $this, 'filter_rest_insert_attachment' ) );
+		remove_action( 'rest_after_insert_attachment', array( $this, 'filter_rest_after_insert_attachment' ) );
 
 		$this->remove_added_uploads();
 	}
@@ -1249,4 +1340,169 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 
 	}
 
+	/**
+	 * @ticket 43751
+	 * @group multisite
+	 * @group ms-required
+	 */
+	public function test_create_item_with_file_exceeds_multisite_max_filesize() {
+		wp_set_current_user( self::$author_id );
+		update_site_option( 'fileupload_maxk', 1 );
+		update_site_option( 'upload_space_check_disabled', false );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/media' );
+		$request->set_file_params(
+			array(
+				'file' => array(
+					'error'    => '0',
+					'file'     => file_get_contents( $this->test_file ),
+					'name'     => 'canola.jpg',
+					'size'     => filesize( $this->test_file ),
+					'tmp_name' => $this->test_file,
+				),
+			)
+		);
+		$request->set_param( 'title', 'My title is very cool' );
+		$request->set_param( 'caption', 'This is a better caption.' );
+		$request->set_header( 'Content-MD5', md5_file( $this->test_file ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$this->assertErrorResponse( 'rest_upload_file_too_big', $response, 400 );
+	}
+
+	/**
+	 * @ticket 43751
+	 * @group multisite
+	 * @group ms-required
+	 */
+	public function test_create_item_with_data_exceeds_multisite_max_filesize() {
+		wp_set_current_user( self::$author_id );
+		update_site_option( 'fileupload_maxk', 1 );
+		update_site_option( 'upload_space_check_disabled', false );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/media' );
+		$request->set_header( 'Content-Type', 'image/jpeg' );
+		$request->set_header( 'Content-Disposition', 'attachment; filename=canola.jpg' );
+		$request->set_body( file_get_contents( $this->test_file ) );
+		$request->set_param( 'title', 'My title is very cool' );
+		$request->set_param( 'caption', 'This is a better caption.' );
+
+		$response = rest_get_server()->dispatch( $request );
+		$this->assertErrorResponse( 'rest_upload_file_too_big', $response, 400 );
+	}
+
+	/**
+	 * @ticket 43751
+	 * @group multisite
+	 * @group ms-required
+	 */
+	public function test_create_item_with_file_exceeds_multisite_site_upload_space() {
+		wp_set_current_user( self::$author_id );
+		add_filter( 'get_space_allowed', '__return_zero' );
+		update_site_option( 'upload_space_check_disabled', false );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/media' );
+		$request->set_file_params(
+			array(
+				'file' => array(
+					'error'    => '0',
+					'file'     => file_get_contents( $this->test_file ),
+					'name'     => 'canola.jpg',
+					'size'     => filesize( $this->test_file ),
+					'tmp_name' => $this->test_file,
+				),
+			)
+		);
+		$request->set_param( 'title', 'My title is very cool' );
+		$request->set_param( 'caption', 'This is a better caption.' );
+		$request->set_header( 'Content-MD5', md5_file( $this->test_file ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$this->assertErrorResponse( 'rest_upload_limited_space', $response, 400 );
+	}
+
+	/**
+	 * @ticket 43751
+	 * @group multisite
+	 * @group ms-required
+	 */
+	public function test_create_item_with_data_exceeds_multisite_site_upload_space() {
+		wp_set_current_user( self::$author_id );
+		add_filter( 'get_space_allowed', '__return_zero' );
+		update_site_option( 'upload_space_check_disabled', false );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/media' );
+		$request->set_header( 'Content-Type', 'image/jpeg' );
+		$request->set_header( 'Content-Disposition', 'attachment; filename=canola.jpg' );
+		$request->set_body( file_get_contents( $this->test_file ) );
+		$request->set_param( 'title', 'My title is very cool' );
+		$request->set_param( 'caption', 'This is a better caption.' );
+
+		$response = rest_get_server()->dispatch( $request );
+		$this->assertErrorResponse( 'rest_upload_limited_space', $response, 400 );
+	}
+
+	/**
+	 * Ensure the `rest_after_insert_attachment` and `rest_insert_attachment` hooks only fire
+	 * once when attachments are created.
+	 *
+	 * @ticket 45269
+	 */
+	public function test_rest_insert_attachment_hooks_fire_once_on_create() {
+		self::$rest_insert_attachment_count = 0;
+		self::$rest_after_insert_attachment_count = 0;
+		add_action( 'rest_insert_attachment', array( $this, 'filter_rest_insert_attachment' ) );
+		add_action( 'rest_after_insert_attachment', array( $this, 'filter_rest_after_insert_attachment' ) );
+
+		wp_set_current_user( self::$editor_id );
+		$request = new WP_REST_Request( 'POST', '/wp/v2/media' );
+		$request->set_header( 'Content-Type', 'image/jpeg' );
+		$request->set_header( 'Content-Disposition', 'attachment; filename=canola.jpg' );
+		$request->set_param( 'title', 'My title is very cool' );
+		$request->set_param( 'caption', 'This is a better caption.' );
+		$request->set_param( 'description', 'Without a description, my attachment is descriptionless.' );
+		$request->set_param( 'alt_text', 'Alt text is stored outside post schema.' );
+
+		$request->set_body( file_get_contents( $this->test_file ) );
+		$response = $this->server->dispatch( $request );
+		$data = $response->get_data();
+		$this->assertEquals( 201, $response->get_status() );
+
+		$this->assertSame( 1, self::$rest_insert_attachment_count );
+		$this->assertSame( 1, self::$rest_after_insert_attachment_count );
+	}
+
+	/**
+	 * Ensure the `rest_after_insert_attachment` and `rest_insert_attachment` hooks only fire
+	 * once when attachments are updated.
+	 *
+	 * @ticket 45269
+	 */
+	public function test_rest_insert_attachment_hooks_fire_once_on_update() {
+		self::$rest_insert_attachment_count = 0;
+		self::$rest_after_insert_attachment_count = 0;
+		add_action( 'rest_insert_attachment', array( $this, 'filter_rest_insert_attachment' ) );
+		add_action( 'rest_after_insert_attachment', array( $this, 'filter_rest_after_insert_attachment' ) );
+
+		wp_set_current_user( self::$editor_id );
+		$attachment_id = $this->factory->attachment->create_object( $this->test_file, 0, array(
+			'post_mime_type' => 'image/jpeg',
+			'post_excerpt'   => 'A sample caption',
+			'post_author'    => self::$editor_id,
+		) );
+		$request = new WP_REST_Request( 'POST', '/wp/v2/media/' . $attachment_id );
+		$request->set_param( 'title', 'My title is very cool' );
+		$response = $this->server->dispatch( $request );
+
+		$this->assertSame( 1, self::$rest_insert_attachment_count );
+		$this->assertSame( 1, self::$rest_after_insert_attachment_count );
+	}
+
+	public function filter_rest_insert_attachment( $attachment ) {
+		self::$rest_insert_attachment_count++;
+	}
+
+	public function filter_rest_after_insert_attachment( $attachment ) {
+		self::$rest_after_insert_attachment_count++;
+	}
 }

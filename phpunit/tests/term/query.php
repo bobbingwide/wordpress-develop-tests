@@ -291,6 +291,41 @@ class Tests_Term_Query extends WP_UnitTestCase {
 	}
 
 	/**
+	 * @ticket 44221
+	 */
+	public function test_all_with_object_id_should_return_term_objects() {
+		register_taxonomy( 'wptests_tax_1', 'post' );
+		$posts = self::factory()->post->create_many( 2 );
+		$t     = self::factory()->term->create( array( 'taxonomy' => 'wptests_tax_1' ) );
+
+		foreach ( $posts as $p ) {
+			wp_set_object_terms( $p, array( $t ), 'wptests_tax_1' );
+		}
+
+		$query = new WP_Term_Query();
+		$args = array(
+			'taxonomy'   => 'wptests_tax_1',
+			'object_ids' => $posts,
+			'fields'     => 'all_with_object_id',
+		);
+
+		$terms = $query->query( $args );
+		$this->assertNotEmpty( $terms );
+		foreach ( $terms as $term ) {
+			$this->assertInstanceOf( 'WP_Term', $term );
+			$this->assertObjectHasAttribute( 'object_id', $term );
+		}
+
+		// Run again to check the cached response.
+		$terms = $query->query( $args );
+		$this->assertNotEmpty( $terms );
+		foreach ( $terms as $term ) {
+			$this->assertInstanceOf( 'WP_Term', $term );
+			$this->assertObjectHasAttribute( 'object_id', $term );
+		}
+	}
+
+	/**
 	 * @ticket 37198
 	 * @group cache
 	 */
@@ -470,5 +505,69 @@ class Tests_Term_Query extends WP_UnitTestCase {
 		$this->assertSame( $expected, $found1 );
 		$this->assertSame( $expected, $found2 );
 		$this->assertSame( $expected, $found3 );
+	}
+
+	/**
+	 * @ticket 42691
+	 */
+	public function test_null_term_object_should_be_discarded() {
+		register_taxonomy( 'wptests_tax', 'post' );
+
+		$terms = self::factory()->term->create_many( 3, array(
+			'taxonomy' => 'wptests_tax',
+		) );
+
+		$this->term_id = $terms[1];
+
+		add_filter( 'get_term', array( $this, 'filter_term_to_null' ) );
+		$found = get_terms( array(
+			'taxonomy'   => 'wptests_tax',
+			'hide_empty' => false,
+		) );
+		remove_filter( 'get_term', array( $this, 'filter_term_to_null' ) );
+
+		$expected = array( $terms[0], $terms[2] );
+
+		$this->assertEqualSets( $expected, wp_list_pluck( $found, 'term_id' ) );
+	}
+
+	public function filter_term_to_null( $term ) {
+		if ( $this->term_id === $term->term_id ) {
+			return null;
+		}
+
+		return $term;
+	}
+
+	/**
+	 * @ticket 42691
+	 */
+	public function test_error_term_object_should_be_discarded() {
+		register_taxonomy( 'wptests_tax', 'post' );
+
+		$terms = self::factory()->term->create_many( 3, array(
+			'taxonomy' => 'wptests_tax',
+		) );
+
+		$this->term_id = $terms[1];
+
+		add_filter( 'get_term', array( $this, 'filter_term_to_wp_error' ) );
+		$found = get_terms( array(
+			'taxonomy'   => 'wptests_tax',
+			'hide_empty' => false,
+		) );
+		remove_filter( 'get_term', array( $this, 'filter_term_to_wp_error' ) );
+
+		$expected = array( $terms[0], $terms[2] );
+
+		$this->assertEqualSets( $expected, wp_list_pluck( $found, 'term_id' ) );
+	}
+
+	public function filter_term_to_wp_error( $term ) {
+		if ( $this->term_id === $term->term_id ) {
+			return new WP_Error( 'foo' );
+		}
+
+		return $term;
 	}
 }
