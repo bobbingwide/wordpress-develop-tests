@@ -3,9 +3,9 @@
 * Contributors: bobbingwide
 * Donate link: https://www.oik-plugins.com/oik/oik-donate/
 * Tags: PHPUnit, automated, testing
-* Requires at least: 4.9
-* Tested up to: 4.9.6
-* Stable tag: 4.9.6
+* Requires at least: 5.0.0
+* Tested up to: 5.0.0
+* Stable tag: 5.0.0
 * License: GPLv2 or later
 * License URI: http://www.gnu.org/licenses/gpl-2.0.html
 * Text Domain: default
@@ -137,7 +137,7 @@ Use this plugin in combination with [oik-batch](https://github.com/bobbingwide/o
 
 # What versions of PHPUnit does this support? 
 
-From WordPress 4.8 you can use PHPUnit 6.2, 6.1 or 5.7
+From WordPress 4.8 you can use PHPUnit 6.5, 6.2, 6.1 or 5.7
 For earlier versions of WordPress you can use PHPUnit 5.7
 
 
@@ -156,6 +156,20 @@ See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.
 
 
 # What's the process for managing this repo? 
+* Method: Dec 2018
+
+- Extract https://develop.svn.wordpress.org/tags/5.0 to c:\svn\wordpress-develop\5.0
+
+```
+cd \svn\wordpress-develop
+svn co https://develop.svn.wordpress.org/tags/5.0
+```
+- remaining steps as August 2016
+
+
+
+
+
 * Method: May 2018
 
 - Extract http://develop.svn.wordpress.org/tags/4.9.6 to c:\svn\wordpress-develop\4.9.6
@@ -208,6 +222,7 @@ This is the latest process used to build the API reference.
 - Change directory to a clone of the GitHub repository bobbingwide/wordpress-develop-tests
 - Remove the phpunit and qunit directories
 - Copy files from the tests folder, phpunit and qunit
+- update the readme.txt file
 - Commit changes, including any deletions
 - Push to GitHub
 - Pull into the WP-a2z websites plugin directory
@@ -227,6 +242,9 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 ## Upgrade Notice 
+# 5.0.0 
+Built from https://develop.svn.wordpress.org/tags/5.0 ( on 2018/12/07 )
+
 # 4.9.6 
 Built from http://develop.svn.wordpress.org/tags/4.9.6 ( on 2018/05/27 )
 
@@ -258,6 +276,12 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 ## Changelog 
+# 5.0.0 
+* Changed: Source files updated to tags/5.0
+* Tested: With PHPUnit 6.5
+* Tested: With WordPress 5.0
+* Tested: With PHP 7.2
+
 # 4.9.6 
 * Changed: Source files updated to tags/4.9.6
 * Changed: Updated readme, noting that in situ PHPUnit tests don't actually work
@@ -325,5 +349,6 @@ This will also extract the latest version of the source.
 Read about:
 - [PHPUnit 5.7](https://phpunit.de/manual/5.7/en/index.html)
 - [PHPUnit 6.2](https://phpunit.de/manual/6.2/en/index.html)
+- [PHPUnit 6.5](https://phpunit.de/manual/6.5/en/index.html)
 - [Automated testing on make.wordpress.org](https://make.wordpress.org/core/handbook/automated-testing)
 
