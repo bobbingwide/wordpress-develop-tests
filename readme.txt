@@ -2,9 +2,9 @@
 Contributors: bobbingwide
 Donate link: https://www.oik-plugins.com/oik/oik-donate/
 Tags: PHPUnit, automated, testing
-Requires at least: 5.0
-Tested up to: 5.0
-Stable tag: 5.0
+Requires at least: 5.2.3
+Tested up to: 5.2.3
+Stable tag: 5.2.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: default
@@ -49,7 +49,7 @@ Testsuites
 The primary directory is different. You run the tests from the plugin directory, 
 Instead of being called tests/phpunit/tests the directory is phpunit/tests
 
-We expect PHP 7.0, 7.1 or 7.2 so there's no need for the exclude sections
+We expect PHP 7.2 or 7.3 so there's no need for the exclude sections
 
     <testsuites>
         <!-- Default test suite to run all tests -->
@@ -121,7 +121,8 @@ PHP const - same as for core
 If you activate the plugin then nothing is expected to happen since it doesn't contain any code. 
 
 
-If you run PHPUnit then quite a lot might happen. 
+If you run PHPUnit then quite a lot might happen.
+ 
 And if you had happened to configure your database the same as your live site then you could destroy your live site.
 But probably not completely! 
 
@@ -136,8 +137,7 @@ Use this plugin in combination with [oik-batch](https://github.com/bobbingwide/o
 
 = What versions of PHPUnit does this support? =
 
-From WordPress 4.8 you can use PHPUnit 6.5, 6.2, 6.1 or 5.7
-For earlier versions of WordPress you can use PHPUnit 5.7
+From WordPress 5.2.3 the only version supported is PHPUnit 8.
 
 
 
@@ -155,6 +155,16 @@ See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.
 
 
 = What's the process for managing this repo? =
+Method: Oct 2019 
+- Extract https://develop.svn.wordpress.org/tags/5.2.3 to c:\svn\wordpress-develop\5.2.3
+
+```
+cd \svn\wordpress-develop
+svn co https://develop.svn.wordpress.org/tags/5.2.3
+```
+- remaining steps as August 2016
+
+
 Method: Dec 2018
 
 - Extract https://develop.svn.wordpress.org/tags/5.0 to c:\svn\wordpress-develop\5.0
@@ -164,8 +174,6 @@ cd \svn\wordpress-develop
 svn co https://develop.svn.wordpress.org/tags/5.0
 ```
 - remaining steps as August 2016
-
-
 
 
 
@@ -241,6 +249,10 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 == Upgrade Notice ==
+= 5.2.3 = 
+Now requires PHPUnit 8.
+Built from  https://develop.svn.wordpress.org/tags/5.2.3 ( on 2019/10/09 )
+
 = 5.0 = 
 Built from https://develop.svn.wordpress.org/tags/5.0 ( on 2018/12/07 )
 
@@ -275,6 +287,12 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 == Changelog ==
+= 5.2.3 = 
+* Changed: Source files updates to tags/5.2.3
+* Tested: With PHPUnit 8.4.1
+* Tested: With WordPress 5.2.3
+* Tested: With PHP 7.3 
+
 = 5.0 = 
 * Changed: Source files updated to tags/5.0
 * Tested: With PHPUnit 6.5
@@ -346,8 +364,8 @@ This will also extract the latest version of the source.
 
 
 Read about: 
-- [PHPUnit 5.7](https://phpunit.de/manual/5.7/en/index.html)
-- [PHPUnit 6.2](https://phpunit.de/manual/6.2/en/index.html) 
-- [PHPUnit 6.5](https://phpunit.de/manual/6.5/en/index.html)
+
+
+- [PHPUnit 8](https://phpunit.readthedocs.io/en/8.4/)
 - [Automated testing on make.wordpress.org](https://make.wordpress.org/core/handbook/automated-testing)
 
