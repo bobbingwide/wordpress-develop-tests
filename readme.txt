@@ -2,9 +2,9 @@
 Contributors: bobbingwide
 Donate link: https://www.oik-plugins.com/oik/oik-donate/
 Tags: PHPUnit, automated, testing
-Requires at least: 5.0.0
-Tested up to: 5.0.0
-Stable tag: 5.0.0
+Requires at least: 5.0
+Tested up to: 5.0
+Stable tag: 5.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: default
@@ -241,7 +241,7 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 == Upgrade Notice ==
-= 5.0.0 = 
+= 5.0 = 
 Built from https://develop.svn.wordpress.org/tags/5.0 ( on 2018/12/07 )
 
 = 4.9.6 = 
@@ -275,7 +275,7 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 == Changelog ==
-= 5.0.0 = 
+= 5.0 = 
 * Changed: Source files updated to tags/5.0
 * Tested: With PHPUnit 6.5
 * Tested: With WordPress 5.0
