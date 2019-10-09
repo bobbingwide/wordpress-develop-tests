@@ -37,7 +37,7 @@ class Tests_HTTP_Functions extends WP_UnitTestCase {
 
 	function test_head_request() {
 		// this url give a direct 200 response
-		$url = 'https://asdftestblog1.files.wordpress.com/2007/09/2007-06-30-dsc_4700-1.jpg';
+		$url      = 'https://asdftestblog1.files.wordpress.com/2007/09/2007-06-30-dsc_4700-1.jpg';
 		$response = wp_remote_head( $url );
 
 		$this->skipTestOnTimeout( $response );
@@ -45,7 +45,7 @@ class Tests_HTTP_Functions extends WP_UnitTestCase {
 		$headers = wp_remote_retrieve_headers( $response );
 
 		$this->assertInternalType( 'array', $response );
-		
+
 		$this->assertEquals( 'image/jpeg', $headers['content-type'] );
 		$this->assertEquals( '40148', $headers['content-length'] );
 		$this->assertEquals( '200', wp_remote_retrieve_response_code( $response ) );
@@ -53,7 +53,7 @@ class Tests_HTTP_Functions extends WP_UnitTestCase {
 
 	function test_head_redirect() {
 		// this url will 301 redirect
-		$url = 'https://asdftestblog1.wordpress.com/files/2007/09/2007-06-30-dsc_4700-1.jpg';
+		$url      = 'https://asdftestblog1.wordpress.com/files/2007/09/2007-06-30-dsc_4700-1.jpg';
 		$response = wp_remote_head( $url );
 
 		$this->skipTestOnTimeout( $response );
@@ -78,7 +78,7 @@ class Tests_HTTP_Functions extends WP_UnitTestCase {
 		$headers = wp_remote_retrieve_headers( $response );
 
 		$this->assertInternalType( 'array', $response );
-	
+
 		// should return the same headers as a head request
 		$this->assertEquals( 'image/jpeg', $headers['content-type'] );
 		$this->assertEquals( '40148', $headers['content-length'] );
@@ -147,11 +147,19 @@ class Tests_HTTP_Functions extends WP_UnitTestCase {
 	function test_get_response_cookies_with_wp_http_cookie_object() {
 		$url = 'http://example.org';
 
-		$response = wp_remote_get( $url, array(
-			'cookies' => array(
-				new WP_Http_Cookie( array( 'name' => 'test', 'value' => 'foo' ) ),
-			),
-		) );
+		$response = wp_remote_get(
+			$url,
+			array(
+				'cookies' => array(
+					new WP_Http_Cookie(
+						array(
+							'name'  => 'test',
+							'value' => 'foo',
+						)
+					),
+				),
+			)
+		);
 
 		$this->skipTestOnTimeout( $response );
 
@@ -171,11 +179,14 @@ class Tests_HTTP_Functions extends WP_UnitTestCase {
 	function test_get_response_cookies_with_name_value_array() {
 		$url = 'http://example.org';
 
-		$response = wp_remote_get( $url, array(
-			'cookies' => array(
-				'test' => 'foo',
-			),
-		) );
+		$response = wp_remote_get(
+			$url,
+			array(
+				'cookies' => array(
+					'test' => 'foo',
+				),
+			)
+		);
 
 		$this->skipTestOnTimeout( $response );
 
@@ -187,5 +198,30 @@ class Tests_HTTP_Functions extends WP_UnitTestCase {
 		$this->assertInstanceOf( 'WP_Http_Cookie', $cookie );
 		$this->assertSame( 'test', $cookie->name );
 		$this->assertSame( 'foo', $cookie->value );
+	}
+
+	/**
+	 * @ticket 43231
+	 */
+	function test_get_cookie_host_only() {
+		// emulate WP_Http::request() internals
+		$requests_response = new Requests_Response();
+
+		$requests_response->cookies['test'] = Requests_Cookie::parse( 'test=foo; domain=.wordpress.org' );
+
+		$requests_response->cookies['test']->flags['host-only'] = false; // https://github.com/rmccue/Requests/issues/306
+
+		$http_response = new WP_HTTP_Requests_Response( $requests_response );
+
+		$response = $http_response->to_array();
+
+		// check the host_only flag in the resulting WP_Http_Cookie
+		$cookie = wp_remote_retrieve_cookie( $response, 'test' );
+		$this->assertEquals( $cookie->domain, 'wordpress.org' );
+		$this->assertFalse( $cookie->host_only, 'host-only flag not set' );
+
+		// regurgitate (Requests_Cookie -> WP_Http_Cookie -> Requests_Cookie)
+		$cookies = WP_Http::normalize_cookies( wp_remote_retrieve_cookies( $response ) );
+		$this->assertFalse( $cookies['test']->flags['host-only'], 'host-only flag data lost' );
 	}
 }

@@ -304,6 +304,7 @@ class WP_Import extends WP_Importer {
 
 		$create_users = $this->allow_create_users();
 		if ( $create_users ) {
+			echo '<label for="user_new_'. $n . '">';
 			if ( $this->version != '1.0' ) {
 				_e( 'or create new user with login name:', 'wordpress-importer' );
 				$value = '';
@@ -311,21 +312,26 @@ class WP_Import extends WP_Importer {
 				_e( 'as a new user:', 'wordpress-importer' );
 				$value = esc_attr( sanitize_user( $author['author_login'], true ) );
 			}
+			echo '</label>';
 
-			echo ' <input type="text" name="user_new['.$n.']" value="'. $value .'" /><br />';
+			echo ' <input type="text" id="user_new_' . $n . '" name="user_new['.$n.']" value="'. $value .'" /><br />';
 		}
 
+		echo '<label for="imported_authors_'. $n . '">';
 		if ( ! $create_users && $this->version == '1.0' ) {
 			_e( 'assign posts to an existing user:', 'wordpress-importer' );
 		} else {
 			_e( 'or assign posts to an existing user:', 'wordpress-importer' );
 		}
+		echo '</label>';
 
-		wp_dropdown_users( array(
+		echo ' ' . wp_dropdown_users( array(
 			'name'            => "user_map[$n]",
+			'id'              => 'imported_authors_' . $n,
 			'multi'           => true,
 			'show_option_all' => __( '- Select -', 'wordpress-importer' ),
 			'show'            => 'display_name_with_login',
+			'echo'            => 0,
 		) );
 
 		echo '<input type="hidden" name="imported_authors['.$n.']" value="' . esc_attr( $author['author_login'] ) . '" />';
@@ -414,18 +420,18 @@ class WP_Import extends WP_Importer {
 				continue;
 			}
 
-			$category_parent = empty( $cat['category_parent'] ) ? 0 : category_exists( $cat['category_parent'] );
-			$category_description = isset( $cat['category_description'] ) ? $cat['category_description'] : '';
-			$catarr = array(
-				'category_nicename' => $cat['category_nicename'],
-				'category_parent' => $category_parent,
-				'cat_name' => $cat['cat_name'],
-				'category_description' => $category_description
-			);
-			$catarr = wp_slash( $catarr );
+			$parent      = empty( $cat['category_parent'] ) ? 0 : category_exists( $cat['category_parent'] );
+			$description = isset( $cat['category_description'] ) ? $cat['category_description'] : '';
 
-			$id = wp_insert_category( $catarr );
-			if ( ! is_wp_error( $id ) ) {
+			$data = array(
+				'category_nicename'    => $cat['category_nicename'],
+				'category_parent'      => $parent,
+				'cat_name'             => wp_slash( $cat['cat_name'] ),
+				'category_description' => wp_slash( $description ),
+			);
+
+			$id = wp_insert_category( $data );
+			if ( ! is_wp_error( $id ) && $id > 0 ) {
 				if ( isset($cat['term_id']) )
 					$this->processed_terms[intval($cat['term_id'])] = $id;
 			} else {
@@ -436,7 +442,7 @@ class WP_Import extends WP_Importer {
 				continue;
 			}
 
-			$this->process_termmeta( $cat, $id['term_id'] );
+			$this->process_termmeta( $cat, $id );
 		}
 
 		unset( $this->categories );
@@ -463,11 +469,13 @@ class WP_Import extends WP_Importer {
 				continue;
 			}
 
-			$tag = wp_slash( $tag );
-			$tag_desc = isset( $tag['tag_description'] ) ? $tag['tag_description'] : '';
-			$tagarr = array( 'slug' => $tag['tag_slug'], 'description' => $tag_desc );
+			$description = isset( $tag['tag_description'] ) ? $tag['tag_description'] : '';
+			$args        = array(
+				'slug'        => $tag['tag_slug'],
+				'description' => wp_slash( $description ),
+			);
 
-			$id = wp_insert_term( $tag['tag_name'], 'post_tag', $tagarr );
+			$id = wp_insert_term( wp_slash( $tag['tag_name'] ), 'post_tag', $args );
 			if ( ! is_wp_error( $id ) ) {
 				if ( isset($tag['term_id']) )
 					$this->processed_terms[intval($tag['term_id'])] = $id['term_id'];
@@ -510,13 +518,19 @@ class WP_Import extends WP_Importer {
 				$parent = 0;
 			} else {
 				$parent = term_exists( $term['term_parent'], $term['term_taxonomy'] );
-				if ( is_array( $parent ) ) $parent = $parent['term_id'];
+				if ( is_array( $parent ) ) {
+					$parent = $parent['term_id'];
+				}
 			}
-			$term = wp_slash( $term );
-			$description = isset( $term['term_description'] ) ? $term['term_description'] : '';
-			$termarr = array( 'slug' => $term['slug'], 'description' => $description, 'parent' => intval($parent) );
 
-			$id = wp_insert_term( $term['term_name'], $term['term_taxonomy'], $termarr );
+			$description = isset( $term['term_description'] ) ? $term['term_description'] : '';
+			$args        = array(
+				'slug'        => $term['slug'],
+				'description' => wp_slash( $description ),
+				'parent'      => (int) $parent
+			);
+
+			$id = wp_insert_term( wp_slash( $term['term_name'] ), $term['term_taxonomy'], $args );
 			if ( ! is_wp_error( $id ) ) {
 				if ( isset($term['term_id']) )
 					$this->processed_terms[intval($term['term_id'])] = $id['term_id'];
@@ -543,6 +557,10 @@ class WP_Import extends WP_Importer {
 	 * @param int   $term_id ID of the newly created term.
 	 */
 	protected function process_termmeta( $term, $term_id ) {
+		if ( ! function_exists( 'add_term_meta' ) ) {
+			return;
+		}
+
 		if ( ! isset( $term['termmeta'] ) ) {
 			$term['termmeta'] = array();
 		}
@@ -580,7 +598,7 @@ class WP_Import extends WP_Importer {
 			// Export gets meta straight from the DB so could have a serialized string
 			$value = maybe_unserialize( $meta['value'] );
 
-			add_term_meta( $term_id, $key, $value );
+			add_term_meta( $term_id, wp_slash( $key), wp_slash( $value ) );
 
 			/**
 			 * Fires after term meta is imported.

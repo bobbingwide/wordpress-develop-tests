@@ -26,8 +26,9 @@ class Tests_Meta_DeleteMetadata extends WP_UnitTestCase {
 		$this->assertEqualSets( $vals, $m );
 
 		delete_metadata( 'post', 12345, 'foo', '1' );
-		$m = get_metadata( 'post', 12345, 'foo', false );
-		$expected = array_diff( $vals, array( '1' ) );;
+		$m        = get_metadata( 'post', 12345, 'foo', false );
+		$expected = array_diff( $vals, array( '1' ) );
+
 		$this->assertEqualSets( $expected, $m );
 	}
 
@@ -43,8 +44,9 @@ class Tests_Meta_DeleteMetadata extends WP_UnitTestCase {
 		$this->assertEqualSets( $vals, $m );
 
 		delete_metadata( 'post', 12345, 'foo', '0' );
-		$m = get_metadata( 'post', 12345, 'foo', false );
-		$expected = array_diff( $vals, array( '0' ) );;
+		$m        = get_metadata( 'post', 12345, 'foo', false );
+		$expected = array_diff( $vals, array( '0' ) );
+
 		$this->assertEqualSets( $expected, $m );
 	}
 
@@ -141,5 +143,22 @@ class Tests_Meta_DeleteMetadata extends WP_UnitTestCase {
 
 		$p2_cache = wp_cache_get( $p2, 'post_meta' );
 		$this->assertFalse( $p2_cache );
+	}
+
+	/**
+	 * @ticket 43561
+	 */
+	public function test_object_id_is_int_inside_delete_post_meta() {
+		$post_id = self::factory()->post->create();
+		$meta_id = add_metadata( 'post', $post_id, 'my_key', 'my_value' );
+		add_action( 'delete_post_meta', array( $this, 'action_check_object_id_is_int' ), 10, 2 );
+		delete_metadata_by_mid( 'post', $meta_id );
+	}
+
+	public function action_check_object_id_is_int( $meta_type, $object_id ) {
+		$this->assertEquals(
+			'integer',
+			gettype( $object_id )
+		);
 	}
 }

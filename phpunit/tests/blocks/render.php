@@ -87,6 +87,32 @@ class WP_Test_Block_Render extends WP_UnitTestCase {
 		return $content;
 	}
 
+	/**
+	 * @ticket 45495
+	 */
+	function test_nested_calls_to_the_content() {
+		register_block_type(
+			'core/test',
+			array(
+				'render_callback' => array(
+					$this,
+					'dynamic_the_content_call',
+				),
+			)
+		);
+
+		$content = "foo\n\nbar";
+
+		$the_content = apply_filters( 'the_content', '<!-- wp:core/test -->' . $content . '<!-- /wp:core/test -->' );
+
+		$this->assertSame( $content, $the_content );
+	}
+
+	function dynamic_the_content_call( $attrs, $content ) {
+		apply_filters( 'the_content', '' );
+		return $content;
+	}
+
 	public function test_can_nest_at_least_so_deep() {
 		$minimum_depth = 99;
 
@@ -177,14 +203,14 @@ class WP_Test_Block_Render extends WP_UnitTestCase {
 		return array_map(
 			array( $this, 'pass_parser_fixture_filenames' ),
 			$fixture_filenames
-		);	}
+		);  }
 
 	/**
 	 * @dataProvider data_do_block_test_filenames
 	 * @ticket 45109
 	 */
 	public function test_do_block_output( $html_filename, $server_html_filename ) {
-		$html_path         = self::$fixtures_dir . '/' . $html_filename;
+		$html_path        = self::$fixtures_dir . '/' . $html_filename;
 		$server_html_path = self::$fixtures_dir . '/' . $server_html_filename;
 
 		foreach ( array( $html_path, $server_html_path ) as $filename ) {
@@ -358,7 +384,7 @@ class WP_Test_Block_Render extends WP_UnitTestCase {
 	 * @return string The cleaned fixture name.
 	 */
 	protected function clean_fixture_filename( $filename ) {
-		$filename = basename( $filename );
+		$filename = wp_basename( $filename );
 		$filename = preg_replace( '/\..+$/', '', $filename );
 		return $filename;
 	}
@@ -434,14 +460,16 @@ class WP_Test_Block_Render extends WP_UnitTestCase {
 	 */
 	public function render_test_block_wp_query() {
 		$content = '';
-		$recent  = new WP_Query( array(
-			'numberposts'      => 10,
-			'orderby'          => 'ID',
-			'order'            => 'DESC',
-			'post_type'        => 'post',
-			'post_status'      => 'draft, publish, future, pending, private',
-			'suppress_filters' => true,
-		) );
+		$recent  = new WP_Query(
+			array(
+				'numberposts'      => 10,
+				'orderby'          => 'ID',
+				'order'            => 'DESC',
+				'post_type'        => 'post',
+				'post_status'      => 'draft, publish, future, pending, private',
+				'suppress_filters' => true,
+			)
+		);
 
 		while ( $recent->have_posts() ) {
 			$recent->the_post();

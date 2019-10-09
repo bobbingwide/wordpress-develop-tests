@@ -14,46 +14,89 @@ class WP_UnitTest_Factory_For_Term extends WP_UnitTest_Factory_For_Thing {
 	private $taxonomy;
 	const DEFAULT_TAXONOMY = 'post_tag';
 
-	function __construct( $factory = null, $taxonomy = null ) {
+	public function __construct( $factory = null, $taxonomy = null ) {
 		parent::__construct( $factory );
-		$this->taxonomy = $taxonomy ? $taxonomy : self::DEFAULT_TAXONOMY;
+		$this->taxonomy                       = $taxonomy ? $taxonomy : self::DEFAULT_TAXONOMY;
 		$this->default_generation_definitions = array(
-			'name' => new WP_UnitTest_Generator_Sequence( 'Term %s' ),
-			'taxonomy' => $this->taxonomy,
+			'name'        => new WP_UnitTest_Generator_Sequence( 'Term %s' ),
+			'taxonomy'    => $this->taxonomy,
 			'description' => new WP_UnitTest_Generator_Sequence( 'Term description %s' ),
 		);
 	}
 
-	function create_object( $args ) {
-		$args = array_merge( array( 'taxonomy' => $this->taxonomy ), $args );
+	/**
+	 * Creates a term object.
+	 *
+	 * @param array $args Array or string of arguments for inserting a term.
+	 *
+	 * @return array|WP_Error
+	 */
+	public function create_object( $args ) {
+		$args         = array_merge( array( 'taxonomy' => $this->taxonomy ), $args );
 		$term_id_pair = wp_insert_term( $args['name'], $args['taxonomy'], $args );
-		if ( is_wp_error( $term_id_pair ) )
+		if ( is_wp_error( $term_id_pair ) ) {
 			return $term_id_pair;
+		}
 		return $term_id_pair['term_id'];
 	}
 
-	function update_object( $term, $fields ) {
+	/**
+	 * Updates the term.
+	 *
+	 * @param int|object   $term   The term to update.
+	 * @param array|string $fields The context in which to relate the term to the object.
+	 *
+	 * @return int The term id.
+	 */
+	public function update_object( $term, $fields ) {
 		$fields = array_merge( array( 'taxonomy' => $this->taxonomy ), $fields );
-		if ( is_object( $term ) )
+		if ( is_object( $term ) ) {
 			$taxonomy = $term->taxonomy;
+		}
 		$term_id_pair = wp_update_term( $term, $taxonomy, $fields );
 		return $term_id_pair['term_id'];
 	}
 
-	function add_post_terms( $post_id, $terms, $taxonomy, $append = true ) {
+	/**
+	 * Attach terms on the given post.
+	 *
+	 * @param int          $post_id  The Post ID.
+	 * @param string|array $terms    An array of terms to set for the post, or a string of terms
+	 *                               separated by commas. Hierarchical taxonomies must always pass IDs rather
+	 *                               than names so that children with the same names but different parents
+	 *                               aren't confused.
+	 * @param string       $taxonomy Taxonomy name.
+	 * @param bool         $append   Optional. If true, don't delete existing terms, just add on. If false,
+	 *                               replace the terms with the new terms. Default true.
+	 *
+	 * @return array|false|WP_Error Array of term taxonomy IDs of affected terms. WP_Error or false on failure.
+	 */
+	public function add_post_terms( $post_id, $terms, $taxonomy, $append = true ) {
 		return wp_set_post_terms( $post_id, $terms, $taxonomy, $append );
 	}
 
 	/**
-	 * @return array|null|WP_Error|WP_Term
+	 * Create a term and returns it as a object.
+	 *
+	 * @param array $args                   Array or string of arguments for inserting a term.
+	 * @param null  $generation_definitions The default values.
+	 *
+	 * @return null|WP_Error|WP_Term WP_Term on success. WP_error if taxonomy does not exist. Null for miscellaneous failure.
 	 */
-	function create_and_get( $args = array(), $generation_definitions = null ) {
-		$term_id = $this->create( $args, $generation_definitions );
+	public function create_and_get( $args = array(), $generation_definitions = null ) {
+		$term_id  = $this->create( $args, $generation_definitions );
 		$taxonomy = isset( $args['taxonomy'] ) ? $args['taxonomy'] : $this->taxonomy;
 		return get_term( $term_id, $taxonomy );
 	}
 
-	function get_object_by_id( $term_id ) {
+	/**
+	 * Retrieves the term by given term id.
+	 *
+	 * @param int $term_id The term id to retrieve.
+	 *
+	 * @return null|WP_Error|WP_Term WP_Term on success. WP_error if taxonomy does not exist. Null for miscellaneous failure.
+	 */
+	public function get_object_by_id( $term_id ) {
 		return get_term( $term_id, $this->taxonomy );
 	}
 }
