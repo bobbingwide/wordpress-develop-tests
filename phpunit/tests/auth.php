@@ -24,7 +24,7 @@ class Tests_Auth extends WP_UnitTestCase {
 
 		self::$user_id = self::$_user->ID;
 
-		require_once( ABSPATH . WPINC . '/class-phpass.php' );
+		require_once ABSPATH . WPINC . '/class-phpass.php';
 		self::$wp_hasher = new PasswordHash( 8, true );
 	}
 
@@ -165,6 +165,15 @@ class Tests_Auth extends WP_UnitTestCase {
 		unset( $_REQUEST['_wpnonce'] );
 	}
 
+	public function test_check_admin_referer_with_default_action_as_string_not_doing_it_wrong() {
+		// A valid nonce needs to be set so the check doesn't die()
+		$_REQUEST['_wpnonce'] = wp_create_nonce( '-1' );
+		$result               = check_admin_referer( '-1' );
+		$this->assertSame( 1, $result );
+
+		unset( $_REQUEST['_wpnonce'] );
+	}
+
 	/**
 	 * @ticket 36361
 	 */
@@ -227,6 +236,20 @@ class Tests_Auth extends WP_UnitTestCase {
 	}
 
 	/**
+	 * @ticket 45746
+	 */
+	function test_user_activation_key_is_saved() {
+		$user = get_userdata( $this->user->ID );
+		$key  = get_password_reset_key( $user );
+
+		// A correctly saved key should be accepted
+		$check = check_password_reset_key( $key, $this->user->user_login );
+		$this->assertNotWPError( $check );
+		$this->assertInstanceOf( 'WP_User', $check );
+		$this->assertSame( $this->user->ID, $check->ID );
+	}
+
+	/**
 	 * @ticket 32429
 	 */
 	function test_user_activation_key_is_checked() {
@@ -242,6 +265,7 @@ class Tests_Auth extends WP_UnitTestCase {
 				'ID' => $this->user->ID,
 			)
 		);
+		clean_user_cache( $this->user );
 
 		// A valid key should be accepted
 		$check = check_password_reset_key( $key, $this->user->user_login );
@@ -279,6 +303,7 @@ class Tests_Auth extends WP_UnitTestCase {
 				'ID' => $this->user->ID,
 			)
 		);
+		clean_user_cache( $this->user );
 
 		// An expired but otherwise valid key should be rejected
 		$check = check_password_reset_key( $key, $this->user->user_login );
@@ -316,6 +341,7 @@ class Tests_Auth extends WP_UnitTestCase {
 				'ID' => $this->user->ID,
 			)
 		);
+		clean_user_cache( $this->user );
 
 		// A legacy user_activation_key should not be accepted
 		$check = check_password_reset_key( $key, $this->user->user_login );
@@ -345,6 +371,7 @@ class Tests_Auth extends WP_UnitTestCase {
 				'ID' => $this->user->ID,
 			)
 		);
+		clean_user_cache( $this->user );
 
 		// A plaintext user_activation_key should not allow an otherwise valid key to be accepted
 		$check = check_password_reset_key( $key, $this->user->user_login );

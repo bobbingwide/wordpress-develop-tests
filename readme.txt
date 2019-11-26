@@ -158,6 +158,7 @@ svn co https://develop.svn.wordpress.org/tags/5.3
 ```
 - remaining steps as August 2016
 
+
 Method: Oct 2019 
 - Extract https://develop.svn.wordpress.org/tags/5.2.3 to c:\svn\wordpress-develop\5.2.3
 
