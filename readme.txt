@@ -2,9 +2,9 @@
 Contributors: bobbingwide
 Donate link: https://www.oik-plugins.com/oik/oik-donate/
 Tags: PHPUnit, automated, testing
-Requires at least: 5.2.3
-Tested up to: 5.2.3
-Stable tag: 5.2.3
+Requires at least: 5.3
+Tested up to: 5.3
+Stable tag: 5.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: default
@@ -23,18 +23,13 @@ The purpose of this plugin is twofold:
 1. To allow the WP-a2z dynamic API reference parser to be run against the PHPUnit tests for WordPress. Developers can then view the tests and navigate through them as if they were a real plugin.
 2. To provide the framework functionality for in situ PHPUnit testing of plugins and themes using oik-batch.
 
-
-
 == Installation ==
 
 * Only intended for installation into a WordPress environment where you'll be running your own PHPUnit tests.
-
 * The zip file is built from the tests folder of the wordpress-develop SVN repository.
 
 
-
 == Frequently Asked Questions ==
-
 
 = What does this plugin do? =
 Nothing as a plugin. 
@@ -127,7 +122,6 @@ And if you had happened to configure your database the same as your live site th
 But probably not completely! 
 
 
-
 = Can I run the tests from my WordPress site? =
 I'm sure you could try to do this but I can't see why you'd want to.
 
@@ -137,7 +131,7 @@ Use this plugin in combination with [oik-batch](https://github.com/bobbingwide/o
 
 = What versions of PHPUnit does this support? =
 
-From WordPress 5.2.3 the only version supported is PHPUnit 8.
+From WordPress 5.2.3 and above the only version supported is PHPUnit 8.
 
 
 
@@ -155,6 +149,15 @@ See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.
 
 
 = What's the process for managing this repo? =
+Method: Nov 2019
+- Extract https://develop.svn.wordpress.org/tags/5.3 to c:\svn\wordpress-develop\5.3
+
+```
+cd \svn\wordpress-develop
+svn co https://develop.svn.wordpress.org/tags/5.3
+```
+- remaining steps as August 2016
+
 Method: Oct 2019 
 - Extract https://develop.svn.wordpress.org/tags/5.2.3 to c:\svn\wordpress-develop\5.2.3
 
@@ -249,9 +252,12 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 == Upgrade Notice ==
+= 5.3 =
+Built from https://develop.svn.wordpress.org/tags/5.3 ( on 2019/11/26 )
+
 = 5.2.3 = 
 Now requires PHPUnit 8.
-Built from  https://develop.svn.wordpress.org/tags/5.2.3 ( on 2019/10/09 )
+Built from https://develop.svn.wordpress.org/tags/5.2.3 ( on 2019/10/09 )
 
 = 5.0 = 
 Built from https://develop.svn.wordpress.org/tags/5.0 ( on 2018/12/07 )
@@ -287,8 +293,14 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 == Changelog ==
+= 5.3 =
+* Changed: Source files updated to tags/5.3
+* Tested: With PHPUnit 8.4.1
+* Tested: With WordPress 5.3
+* Tested: With PHP 7.3
+
 = 5.2.3 = 
-* Changed: Source files updates to tags/5.2.3
+* Changed: Source files updated to tags/5.2.3
 * Tested: With PHPUnit 8.4.1
 * Tested: With WordPress 5.2.3
 * Tested: With PHP 7.3 
