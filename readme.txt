@@ -2,9 +2,9 @@
 Contributors: bobbingwide
 Donate link: https://www.oik-plugins.com/oik/oik-donate/
 Tags: PHPUnit, automated, testing
-Requires at least: 5.2.3
-Tested up to: 5.2.3
-Stable tag: 5.2.3
+Requires at least: 5.3
+Tested up to: 5.3
+Stable tag: 5.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: default
@@ -155,6 +155,17 @@ See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.
 
 
 = What's the process for managing this repo? =
+Method: Nov 2019
+- Extract https://develop.svn.wordpress.org/tags/5.3 to c:\svn\wordpress-develop\5.3
+
+```
+cd \svn\wordpress-develop
+svn co https://develop.svn.wordpress.org/tags/5.3
+```
+
+- remaining steps as August 2016c
+
+
 Method: Oct 2019 
 - Extract https://develop.svn.wordpress.org/tags/5.2.3 to c:\svn\wordpress-develop\5.2.3
 
@@ -249,6 +260,9 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 == Upgrade Notice ==
+= 5.3 =
+Built from https://develop.svn.wordpress.org/tags/5.3 ( on 2019/11/26 )
+
 = 5.2.3 = 
 Now requires PHPUnit 8.
 Built from  https://develop.svn.wordpress.org/tags/5.2.3 ( on 2019/10/09 )
@@ -287,8 +301,14 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 == Changelog ==
+= 5.3 =
+* Changed: Source files updated to tags/5.3
+* Tested: With PHPUnit 8.4.1
+* Tested: With WordPress 5.3
+* Tested: With PHP 7.3
+
 = 5.2.3 = 
-* Changed: Source files updates to tags/5.2.3
+* Changed: Source files updated to tags/5.2.3
 * Tested: With PHPUnit 8.4.1
 * Tested: With WordPress 5.2.3
 * Tested: With PHP 7.3 
