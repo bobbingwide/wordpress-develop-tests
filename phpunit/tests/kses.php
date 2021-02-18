@@ -16,17 +16,21 @@ class Tests_Kses extends WP_UnitTestCase {
 		$attributes = array(
 			'class' => 'classname',
 			'id'    => 'id',
-			'style' => 'color: red;',
-			'style' => 'color: red',
-			'style' => 'color: red; text-align:center',
-			'style' => 'color: red; text-align:center;',
+			'style' => array(
+				'color: red;',
+				'color: red',
+				'color: red; text-align:center',
+				'color: red; text-align:center;',
+			),
 			'title' => 'title',
 		);
 
-		foreach ( $attributes as $name => $value ) {
-			$string        = "<address $name='$value'>1 WordPress Avenue, The Internet.</address>";
-			$expect_string = "<address $name='" . str_replace( '; ', ';', trim( $value, ';' ) ) . "'>1 WordPress Avenue, The Internet.</address>";
-			$this->assertEquals( $expect_string, wp_kses( $string, $allowedposttags ) );
+		foreach ( $attributes as $name => $values ) {
+			foreach ( (array) $values as $value ) {
+				$string        = "<address $name='$value'>1 WordPress Avenue, The Internet.</address>";
+				$expect_string = "<address $name='" . str_replace( '; ', ';', trim( $value, ';' ) ) . "'>1 WordPress Avenue, The Internet.</address>";
+				$this->assertEquals( $expect_string, wp_kses( $string, $allowedposttags ) );
+			}
 		}
 	}
 
@@ -61,6 +65,60 @@ class Tests_Kses extends WP_UnitTestCase {
 			$expect_string = "<a $expected_attr>I link this</a>";
 			$this->assertEquals( $expect_string, wp_kses( $string, $allowedposttags ) );
 		}
+	}
+
+	/**
+	 * Test video tag.
+	 *
+	 * @ticket 50167
+	 * @ticket 29826
+	 * @dataProvider data_wp_kses_video
+	 *
+	 * @param string $source   Source HTML.
+	 * @param string $context  Context to use for parsing source.
+	 * @param string $expected Expected output following KSES parsing.
+	 */
+	function test_wp_kses_video( $source, $context, $expected ) {
+		$actual = wp_kses( $source, $context );
+		$this->assertSame( $expected, $actual );
+	}
+
+	/**
+	 * Data provider for test_wp_kses_video
+	 *
+	 * @return array[] Array containing test data {
+	 *     @type string $source   Source HTML.
+	 *     @type string $context  Context to use for parsing source.
+	 *     @type string $expected Expected output following KSES parsing.
+	 * }
+	 */
+	function data_wp_kses_video() {
+		return array(
+			// Set 0: Valid post object params in post context.
+			array(
+				'<video src="movie.mov" autoplay controls height=9 loop muted poster="still.gif" playsinline preload width=16 />',
+				'post',
+				'<video src="movie.mov" autoplay controls height="9" loop muted poster="still.gif" playsinline preload width="16" />',
+			),
+			// Set 1: Valid post object params in data context.
+			array(
+				'<video src="movie.mov" autoplay controls height=9 loop muted poster="still.gif" playsinline preload width=16 />',
+				'data',
+				'',
+			),
+			// Set 2: Disallowed urls in post context.
+			array(
+				'<video src="bad://w.org/movie.mov" poster="bad://w.org/movie.jpg" />',
+				'post',
+				'<video src="//w.org/movie.mov" poster="//w.org/movie.jpg" />',
+			),
+			// Set 3: Disallowed attributes in post context.
+			array(
+				'<video onload="alert(1);" src="https://videos.files.wordpress.com/DZEMDKxc/video-0f9c363010.mp4" />',
+				'post',
+				'<video src="https://videos.files.wordpress.com/DZEMDKxc/video-0f9c363010.mp4" />',
+			),
+		);
 	}
 
 	/**
@@ -176,6 +234,28 @@ EOF;
 					default:
 						$this->fail( "wp_kses_bad_protocol failed on $k, $x. Result: $result" );
 				}
+			}
+		}
+
+		$bad_not_normalized = array(
+			'dummy&colon;alert(1)',
+			'javascript&colon;alert(1)',
+			'javascript&CoLon;alert(1)',
+			'javascript&COLON;alert(1);',
+			'javascript&#58;alert(1);',
+			'javascript&#0058;alert(1);',
+			'javascript&#0000058alert(1);',
+			'jav	ascript&COLON;alert(1);',
+			'javascript&#58;javascript&colon;alert(1);',
+			'javascript&#58;javascript&colon;alert(1);',
+			'javascript&#0000058javascript&colon;alert(1);',
+			'javascript&#58;javascript&#0000058alert(1);',
+			'javascript&#58alert(1)',
+		);
+		foreach ( $bad_not_normalized as $k => $x ) {
+			$result = wp_kses_bad_protocol( $x, wp_allowed_protocols() );
+			if ( ! empty( $result ) && 'alert(1);' !== $result && 'alert(1)' !== $result ) {
+				$this->fail( "wp_kses_bad_protocol failed on $k, $x. Result: $result" );
 			}
 		}
 
@@ -552,6 +632,26 @@ EOF;
 				"array[1]='z'z'z'z",
 				false,
 			),
+			// Using a digit in attribute name should work.
+			array(
+				'href="https://example.com/[shortcode attr=\'value\']" data-op3-timer-seconds="0"',
+				array( 'href="https://example.com/[shortcode attr=\'value\']" ', 'data-op3-timer-seconds="0"' ),
+			),
+			// Using an underscore in attribute name should work.
+			array(
+				'href="https://example.com/[shortcode attr=\'value\']" data-op_timer-seconds="0"',
+				array( 'href="https://example.com/[shortcode attr=\'value\']" ', 'data-op_timer-seconds="0"' ),
+			),
+			// Using a period in attribute name should work.
+			array(
+				'href="https://example.com/[shortcode attr=\'value\']" data-op.timer-seconds="0"',
+				array( 'href="https://example.com/[shortcode attr=\'value\']" ', 'data-op.timer-seconds="0"' ),
+			),
+			// Using a digit at the beginning of attribute name should return false.
+			array(
+				'href="https://example.com/[shortcode attr=\'value\']" 3data-op-timer-seconds="0"',
+				false,
+			),
 		);
 	}
 
@@ -671,6 +771,11 @@ EOF;
 			),
 			array(
 				'img',
+				'loading="lazy"',
+				'loading="lazy"',
+			),
+			array(
+				'img',
 				'onerror=alert(1)',
 				'',
 			),
@@ -752,7 +857,9 @@ EOF;
 	/**
 	 * Testing the safecss_filter_attr() function.
 	 *
+	 * @ticket 37248
 	 * @ticket 42729
+	 * @ticket 48376
 	 * @dataProvider data_test_safecss_filter_attr
 	 *
 	 * @param string $css      A string of CSS rules.
@@ -878,6 +985,66 @@ EOF;
 				'css'      => 'columns: 6rem auto;column-count: 4;column-fill: balance;column-gap: 9px;column-rule: thick inset blue;column-span: none;column-width: 120px',
 				'expected' => 'columns: 6rem auto;column-count: 4;column-fill: balance;column-gap: 9px;column-rule: thick inset blue;column-span: none;column-width: 120px',
 			),
+			// Gradients introduced in 5.3.
+			array(
+				'css'      => 'background: linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%)',
+				'expected' => 'background: linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%)',
+			),
+			array(
+				'css'      => 'background: linear-gradient(135deg,rgba(6,147,227,1) ) (0%,rgb(155,81,224) 100%)',
+				'expected' => '',
+			),
+			array(
+				'css'      => 'background-image: linear-gradient(red,yellow);',
+				'expected' => 'background-image: linear-gradient(red,yellow)',
+			),
+			array(
+				'css'      => 'color: linear-gradient(red,yellow);',
+				'expected' => '',
+			),
+			array(
+				'css'      => 'background-image: linear-gradient(red,yellow); background: prop( red,yellow); width: 100px;',
+				'expected' => 'background-image: linear-gradient(red,yellow);width: 100px',
+			),
+			array(
+				'css'      => 'background: unknown-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%)',
+				'expected' => '',
+			),
+			array(
+				'css'      => 'background: repeating-linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%)',
+				'expected' => 'background: repeating-linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%)',
+			),
+			array(
+				'css'      => 'width: 100px; height: 100px; background: linear-gradient(135deg,rgba(0,208,132,1) 0%,rgba(6,147,227,1) 100%);',
+				'expected' => 'width: 100px;height: 100px;background: linear-gradient(135deg,rgba(0,208,132,1) 0%,rgba(6,147,227,1) 100%)',
+			),
+			array(
+				'css'      => 'background: radial-gradient(#ff0, red, yellow, green, rgba(6,147,227,1), rgb(155,81,224) 90%);',
+				'expected' => 'background: radial-gradient(#ff0, red, yellow, green, rgba(6,147,227,1), rgb(155,81,224) 90%)',
+			),
+			array(
+				'css'      => 'background: radial-gradient(#ff0, red, yellow, green, rgba(6,147,227,1), rgb(155,81,224) 90%);',
+				'expected' => 'background: radial-gradient(#ff0, red, yellow, green, rgba(6,147,227,1), rgb(155,81,224) 90%)',
+			),
+			array(
+				'css'      => 'background: conic-gradient(at 0% 30%, red 10%, yellow 30%, #1e90ff 50%)',
+				'expected' => 'background: conic-gradient(at 0% 30%, red 10%, yellow 30%, #1e90ff 50%)',
+			),
+			// Expressions are not allowed.
+			array(
+				'css'      => 'height: expression( body.scrollTop + 50 + "px" )',
+				'expected' => '',
+			),
+			// RGB color values are not allowed.
+			array(
+				'css'      => 'color: rgb( 100, 100, 100 )',
+				'expected' => '',
+			),
+			// RGBA color values are not allowed.
+			array(
+				'css'      => 'color: rgb( 100, 100, 100, .4 )',
+				'expected' => '',
+			),
 		);
 	}
 
@@ -964,7 +1131,7 @@ EOF;
 	 */
 	function data_wildcard_attribute_prefixes() {
 		return array(
-			// Ends correctly
+			// Ends correctly.
 			array( 'data-*', true ),
 
 			// Does not end with trialing `-`.
@@ -1121,5 +1288,99 @@ EOF;
 				'',
 			),
 		);
+	}
+
+	/**
+	 * Testing the safecss_filter_attr() function with the safecss_filter_attr_allow_css filter.
+	 *
+	 * @ticket 37134
+	 *
+	 * @dataProvider data_test_safecss_filter_attr_filtered
+	 *
+	 * @param string $css      A string of CSS rules.
+	 * @param string $expected Expected string of CSS rules.
+	 */
+	public function test_safecss_filter_attr_filtered( $css, $expected ) {
+		add_filter( 'safecss_filter_attr_allow_css', '__return_true' );
+		$this->assertSame( $expected, safecss_filter_attr( $css ) );
+		remove_filter( 'safecss_filter_attr_allow_css', '__return_true' );
+	}
+
+	/**
+	 * Data Provider for test_safecss_filter_attr_filtered().
+	 *
+	 * @return array {
+	 *     @type array {
+	 *         @string string $css      A string of CSS rules.
+	 *         @string string $expected Expected string of CSS rules.
+	 *     }
+	 * }
+	 */
+	public function data_test_safecss_filter_attr_filtered() {
+		return array(
+
+			// A single attribute name, with a single value.
+			array(
+				'css'      => 'margin-top: 2px',
+				'expected' => 'margin-top: 2px',
+			),
+			// Backslash \ can be allowed with the 'safecss_filter_attr_allow_css' filter.
+			array(
+				'css'      => 'margin-top: \2px',
+				'expected' => 'margin-top: \2px',
+			),
+			// Curly bracket } can be allowed with the 'safecss_filter_attr_allow_css' filter.
+			array(
+				'css'      => 'margin-bottom: 2px}',
+				'expected' => 'margin-bottom: 2px}',
+			),
+			// Parenthesis ) can be allowed with the 'safecss_filter_attr_allow_css' filter.
+			array(
+				'css'      => 'margin-bottom: 2px)',
+				'expected' => 'margin-bottom: 2px)',
+			),
+			// Ampersand & can be allowed with the 'safecss_filter_attr_allow_css' filter.
+			array(
+				'css'      => 'margin-bottom: 2px&',
+				'expected' => 'margin-bottom: 2px&',
+			),
+			// Expressions can be allowed with the 'safecss_filter_attr_allow_css' filter.
+			array(
+				'css'      => 'height: expression( body.scrollTop + 50 + "px" )',
+				'expected' => 'height: expression( body.scrollTop + 50 + "px" )',
+			),
+			// RGB color values can be allowed with the 'safecss_filter_attr_allow_css' filter.
+			array(
+				'css'      => 'color: rgb( 100, 100, 100 )',
+				'expected' => 'color: rgb( 100, 100, 100 )',
+			),
+			// RGBA color values can be allowed with the 'safecss_filter_attr_allow_css' filter.
+			array(
+				'css'      => 'color: rgb( 100, 100, 100, .4 )',
+				'expected' => 'color: rgb( 100, 100, 100, .4 )',
+			),
+		);
+	}
+
+	/**
+	 * Test filtering a standard img tag.
+	 *
+	 * @ticket 50731
+	 */
+	function test_wp_kses_img_tag_standard_attributes() {
+		$html = array(
+			'<img',
+			'loading="lazy"',
+			'src="https://example.com/img.jpg"',
+			'width="1000"',
+			'height="1000"',
+			'alt=""',
+			'class="wp-image-1000"',
+			'/>',
+		);
+
+		$html = implode( ' ', $html );
+
+		$this->assertSame( $html, wp_kses_post( $html ) );
 	}
 }

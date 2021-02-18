@@ -78,7 +78,9 @@ mockedApiResponse.Schema = {
                     ],
                     "args": {
                         "url": {
-                            "required": true
+                            "required": true,
+                            "description": "The URL of the resource for which to fetch oEmbed data.",
+                            "type": "string"
                         },
                         "format": {
                             "required": false,
@@ -135,7 +137,7 @@ mockedApiResponse.Schema = {
                         "discover": {
                             "required": false,
                             "default": true,
-                            "description": "Whether to perform an oEmbed discovery request for non-whitelisted providers.",
+                            "description": "Whether to perform an oEmbed discovery request for unsanctioned providers.",
                             "type": "boolean"
                         }
                     }
@@ -321,6 +323,15 @@ mockedApiResponse.Schema = {
                                 ],
                                 "type": "string"
                             }
+                        },
+                        "tax_relation": {
+                            "required": false,
+                            "enum": [
+                                "AND",
+                                "OR"
+                            ],
+                            "description": "Limit result set based on relationship between multiple taxonomies.",
+                            "type": "string"
                         },
                         "categories": {
                             "required": false,
@@ -700,7 +711,7 @@ mockedApiResponse.Schema = {
                         "force": {
                             "required": false,
                             "default": false,
-                            "description": "Whether to bypass trash and force deletion.",
+                            "description": "Whether to bypass Trash and force deletion.",
                             "type": "boolean"
                         }
                     }
@@ -1527,7 +1538,7 @@ mockedApiResponse.Schema = {
                         "force": {
                             "required": false,
                             "default": false,
-                            "description": "Whether to bypass trash and force deletion.",
+                            "description": "Whether to bypass Trash and force deletion.",
                             "type": "boolean"
                         }
                     }
@@ -2297,7 +2308,7 @@ mockedApiResponse.Schema = {
                         "force": {
                             "required": false,
                             "default": false,
-                            "description": "Whether to bypass trash and force deletion.",
+                            "description": "Whether to bypass Trash and force deletion.",
                             "type": "boolean"
                         }
                     }
@@ -2325,6 +2336,51 @@ mockedApiResponse.Schema = {
                             "enum": [
                                 "create-image-subsizes"
                             ],
+                            "type": "string"
+                        }
+                    }
+                }
+            ]
+        },
+        "/wp/v2/media/(?P<id>[\\d]+)/edit": {
+            "namespace": "wp/v2",
+            "methods": [
+                "POST"
+            ],
+            "endpoints": [
+                {
+                    "methods": [
+                        "POST"
+                    ],
+                    "args": {
+                        "rotation": {
+                            "required": false,
+                            "description": "The amount to rotate the image clockwise in degrees.",
+                            "type": "integer"
+                        },
+                        "x": {
+                            "required": false,
+                            "description": "As a percentage of the image, the x position to start the crop from.",
+                            "type": "number"
+                        },
+                        "y": {
+                            "required": false,
+                            "description": "As a percentage of the image, the y position to start the crop from.",
+                            "type": "number"
+                        },
+                        "width": {
+                            "required": false,
+                            "description": "As a percentage of the image, the width to crop the image to.",
+                            "type": "number"
+                        },
+                        "height": {
+                            "required": false,
+                            "description": "As a percentage of the image, the height to crop the image to.",
+                            "type": "number"
+                        },
+                        "src": {
+                            "required": true,
+                            "description": "URL to the edited image file.",
                             "type": "string"
                         }
                     }
@@ -2649,7 +2705,7 @@ mockedApiResponse.Schema = {
                         "force": {
                             "required": false,
                             "default": false,
-                            "description": "Whether to bypass trash and force deletion.",
+                            "description": "Whether to bypass Trash and force deletion.",
                             "type": "boolean"
                         }
                     }
@@ -4303,7 +4359,7 @@ mockedApiResponse.Schema = {
                         "force": {
                             "required": false,
                             "default": false,
-                            "description": "Whether to bypass trash and force deletion.",
+                            "description": "Whether to bypass Trash and force deletion.",
                             "type": "boolean"
                         },
                         "password": {
@@ -4383,15 +4439,17 @@ mockedApiResponse.Schema = {
                 "self": "http://example.org/index.php?rest_route=/wp/v2/search"
             }
         },
-        "/wp/v2/block-renderer/(?P<name>core/archives)": {
+        "/wp/v2/block-renderer/(?P<name>[a-z0-9-]+/[a-z0-9-]+)": {
             "namespace": "wp/v2",
             "methods": [
-                "GET"
+                "GET",
+                "POST"
             ],
             "endpoints": [
                 {
                     "methods": [
-                        "GET"
+                        "GET",
+                        "POST"
                     ],
                     "args": {
                         "name": {
@@ -4411,7 +4469,7 @@ mockedApiResponse.Schema = {
                         "attributes": {
                             "required": false,
                             "default": [],
-                            "description": "Attributes for core/archives block",
+                            "description": "Attributes for the block",
                             "type": "object"
                         },
                         "post_id": {
@@ -4423,7 +4481,7 @@ mockedApiResponse.Schema = {
                 }
             ]
         },
-        "/wp/v2/block-renderer/(?P<name>core/block)": {
+        "/wp/v2/block-types": {
             "namespace": "wp/v2",
             "methods": [
                 "GET"
@@ -4434,36 +4492,65 @@ mockedApiResponse.Schema = {
                         "GET"
                     ],
                     "args": {
-                        "name": {
-                            "required": false,
-                            "description": "Unique registered name for the block.",
-                            "type": "string"
-                        },
                         "context": {
                             "required": false,
                             "default": "view",
                             "enum": [
+                                "view",
+                                "embed",
                                 "edit"
                             ],
                             "description": "Scope under which the request is made; determines fields present in response.",
                             "type": "string"
                         },
-                        "attributes": {
+                        "namespace": {
                             "required": false,
-                            "default": [],
-                            "description": "Attributes for core/block block",
-                            "type": "object"
+                            "description": "Block namespace.",
+                            "type": "string"
+                        }
+                    }
+                }
+            ],
+            "_links": {
+                "self": [
+                    {
+                        "href": "http://example.org/index.php?rest_route=/wp/v2/block-types"
+                    }
+                ]
+            }
+        },
+        "/wp/v2/block-types/(?P<namespace>[a-zA-Z0-9_-]+)": {
+            "namespace": "wp/v2",
+            "methods": [
+                "GET"
+            ],
+            "endpoints": [
+                {
+                    "methods": [
+                        "GET"
+                    ],
+                    "args": {
+                        "context": {
+                            "required": false,
+                            "default": "view",
+                            "enum": [
+                                "view",
+                                "embed",
+                                "edit"
+                            ],
+                            "description": "Scope under which the request is made; determines fields present in response.",
+                            "type": "string"
                         },
-                        "post_id": {
+                        "namespace": {
                             "required": false,
-                            "description": "ID of the post context.",
-                            "type": "integer"
+                            "description": "Block namespace.",
+                            "type": "string"
                         }
                     }
                 }
             ]
         },
-        "/wp/v2/block-renderer/(?P<name>core/calendar)": {
+        "/wp/v2/block-types/(?P<namespace>[a-zA-Z0-9_-]+)/(?P<name>[a-zA-Z0-9_-]+)": {
             "namespace": "wp/v2",
             "methods": [
                 "GET"
@@ -4476,308 +4563,24 @@ mockedApiResponse.Schema = {
                     "args": {
                         "name": {
                             "required": false,
-                            "description": "Unique registered name for the block.",
+                            "description": "Block name",
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "required": false,
+                            "description": "Block namespace",
                             "type": "string"
                         },
                         "context": {
                             "required": false,
                             "default": "view",
                             "enum": [
+                                "view",
+                                "embed",
                                 "edit"
                             ],
                             "description": "Scope under which the request is made; determines fields present in response.",
                             "type": "string"
-                        },
-                        "attributes": {
-                            "required": false,
-                            "default": [],
-                            "description": "Attributes for core/calendar block",
-                            "type": "object"
-                        },
-                        "post_id": {
-                            "required": false,
-                            "description": "ID of the post context.",
-                            "type": "integer"
-                        }
-                    }
-                }
-            ]
-        },
-        "/wp/v2/block-renderer/(?P<name>core/categories)": {
-            "namespace": "wp/v2",
-            "methods": [
-                "GET"
-            ],
-            "endpoints": [
-                {
-                    "methods": [
-                        "GET"
-                    ],
-                    "args": {
-                        "name": {
-                            "required": false,
-                            "description": "Unique registered name for the block.",
-                            "type": "string"
-                        },
-                        "context": {
-                            "required": false,
-                            "default": "view",
-                            "enum": [
-                                "edit"
-                            ],
-                            "description": "Scope under which the request is made; determines fields present in response.",
-                            "type": "string"
-                        },
-                        "attributes": {
-                            "required": false,
-                            "default": [],
-                            "description": "Attributes for core/categories block",
-                            "type": "object"
-                        },
-                        "post_id": {
-                            "required": false,
-                            "description": "ID of the post context.",
-                            "type": "integer"
-                        }
-                    }
-                }
-            ]
-        },
-        "/wp/v2/block-renderer/(?P<name>core/latest-comments)": {
-            "namespace": "wp/v2",
-            "methods": [
-                "GET"
-            ],
-            "endpoints": [
-                {
-                    "methods": [
-                        "GET"
-                    ],
-                    "args": {
-                        "name": {
-                            "required": false,
-                            "description": "Unique registered name for the block.",
-                            "type": "string"
-                        },
-                        "context": {
-                            "required": false,
-                            "default": "view",
-                            "enum": [
-                                "edit"
-                            ],
-                            "description": "Scope under which the request is made; determines fields present in response.",
-                            "type": "string"
-                        },
-                        "attributes": {
-                            "required": false,
-                            "default": [],
-                            "description": "Attributes for core/latest-comments block",
-                            "type": "object"
-                        },
-                        "post_id": {
-                            "required": false,
-                            "description": "ID of the post context.",
-                            "type": "integer"
-                        }
-                    }
-                }
-            ]
-        },
-        "/wp/v2/block-renderer/(?P<name>core/latest-posts)": {
-            "namespace": "wp/v2",
-            "methods": [
-                "GET"
-            ],
-            "endpoints": [
-                {
-                    "methods": [
-                        "GET"
-                    ],
-                    "args": {
-                        "name": {
-                            "required": false,
-                            "description": "Unique registered name for the block.",
-                            "type": "string"
-                        },
-                        "context": {
-                            "required": false,
-                            "default": "view",
-                            "enum": [
-                                "edit"
-                            ],
-                            "description": "Scope under which the request is made; determines fields present in response.",
-                            "type": "string"
-                        },
-                        "attributes": {
-                            "required": false,
-                            "default": [],
-                            "description": "Attributes for core/latest-posts block",
-                            "type": "object"
-                        },
-                        "post_id": {
-                            "required": false,
-                            "description": "ID of the post context.",
-                            "type": "integer"
-                        }
-                    }
-                }
-            ]
-        },
-        "/wp/v2/block-renderer/(?P<name>core/rss)": {
-            "namespace": "wp/v2",
-            "methods": [
-                "GET"
-            ],
-            "endpoints": [
-                {
-                    "methods": [
-                        "GET"
-                    ],
-                    "args": {
-                        "name": {
-                            "required": false,
-                            "description": "Unique registered name for the block.",
-                            "type": "string"
-                        },
-                        "context": {
-                            "required": false,
-                            "default": "view",
-                            "enum": [
-                                "edit"
-                            ],
-                            "description": "Scope under which the request is made; determines fields present in response.",
-                            "type": "string"
-                        },
-                        "attributes": {
-                            "required": false,
-                            "default": [],
-                            "description": "Attributes for core/rss block",
-                            "type": "object"
-                        },
-                        "post_id": {
-                            "required": false,
-                            "description": "ID of the post context.",
-                            "type": "integer"
-                        }
-                    }
-                }
-            ]
-        },
-        "/wp/v2/block-renderer/(?P<name>core/search)": {
-            "namespace": "wp/v2",
-            "methods": [
-                "GET"
-            ],
-            "endpoints": [
-                {
-                    "methods": [
-                        "GET"
-                    ],
-                    "args": {
-                        "name": {
-                            "required": false,
-                            "description": "Unique registered name for the block.",
-                            "type": "string"
-                        },
-                        "context": {
-                            "required": false,
-                            "default": "view",
-                            "enum": [
-                                "edit"
-                            ],
-                            "description": "Scope under which the request is made; determines fields present in response.",
-                            "type": "string"
-                        },
-                        "attributes": {
-                            "required": false,
-                            "default": [],
-                            "description": "Attributes for core/search block",
-                            "type": "object"
-                        },
-                        "post_id": {
-                            "required": false,
-                            "description": "ID of the post context.",
-                            "type": "integer"
-                        }
-                    }
-                }
-            ]
-        },
-        "/wp/v2/block-renderer/(?P<name>core/shortcode)": {
-            "namespace": "wp/v2",
-            "methods": [
-                "GET"
-            ],
-            "endpoints": [
-                {
-                    "methods": [
-                        "GET"
-                    ],
-                    "args": {
-                        "name": {
-                            "required": false,
-                            "description": "Unique registered name for the block.",
-                            "type": "string"
-                        },
-                        "context": {
-                            "required": false,
-                            "default": "view",
-                            "enum": [
-                                "edit"
-                            ],
-                            "description": "Scope under which the request is made; determines fields present in response.",
-                            "type": "string"
-                        },
-                        "attributes": {
-                            "required": false,
-                            "default": [],
-                            "description": "Attributes for core/shortcode block",
-                            "type": "object"
-                        },
-                        "post_id": {
-                            "required": false,
-                            "description": "ID of the post context.",
-                            "type": "integer"
-                        }
-                    }
-                }
-            ]
-        },
-        "/wp/v2/block-renderer/(?P<name>core/tag-cloud)": {
-            "namespace": "wp/v2",
-            "methods": [
-                "GET"
-            ],
-            "endpoints": [
-                {
-                    "methods": [
-                        "GET"
-                    ],
-                    "args": {
-                        "name": {
-                            "required": false,
-                            "description": "Unique registered name for the block.",
-                            "type": "string"
-                        },
-                        "context": {
-                            "required": false,
-                            "default": "view",
-                            "enum": [
-                                "edit"
-                            ],
-                            "description": "Scope under which the request is made; determines fields present in response.",
-                            "type": "string"
-                        },
-                        "attributes": {
-                            "required": false,
-                            "default": [],
-                            "description": "Attributes for core/tag-cloud block",
-                            "type": "object"
-                        },
-                        "post_id": {
-                            "required": false,
-                            "description": "ID of the post context.",
-                            "type": "integer"
                         }
                     }
                 }
@@ -4945,6 +4748,216 @@ mockedApiResponse.Schema = {
             "_links": {
                 "self": "http://example.org/index.php?rest_route=/wp/v2/themes"
             }
+        },
+        "/wp/v2/plugins": {
+            "namespace": "wp/v2",
+            "methods": [
+                "GET",
+                "POST"
+            ],
+            "endpoints": [
+                {
+                    "methods": [
+                        "GET"
+                    ],
+                    "args": {
+                        "context": {
+                            "required": false,
+                            "default": "view",
+                            "enum": [
+                                "view",
+                                "embed",
+                                "edit"
+                            ],
+                            "description": "Scope under which the request is made; determines fields present in response.",
+                            "type": "string"
+                        },
+                        "search": {
+                            "required": false,
+                            "description": "Limit results to those matching a string.",
+                            "type": "string"
+                        },
+                        "status": {
+                            "required": false,
+                            "description": "Limits results to plugins with the given status.",
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "inactive",
+                                    "active"
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "methods": [
+                        "POST"
+                    ],
+                    "args": {
+                        "slug": {
+                            "required": true,
+                            "description": "WordPress.org plugin directory slug.",
+                            "type": "string"
+                        },
+                        "status": {
+                            "required": false,
+                            "default": "inactive",
+                            "enum": [
+                                "inactive",
+                                "active"
+                            ],
+                            "description": "The plugin activation status.",
+                            "type": "string"
+                        }
+                    }
+                }
+            ],
+            "_links": {
+                "self": [
+                    {
+                        "href": "http://example.org/index.php?rest_route=/wp/v2/plugins"
+                    }
+                ]
+            }
+        },
+        "/wp/v2/plugins/(?P<plugin>[^.\\/]+(?:\\/[^.\\/]+)?)": {
+            "namespace": "wp/v2",
+            "methods": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE"
+            ],
+            "endpoints": [
+                {
+                    "methods": [
+                        "GET"
+                    ],
+                    "args": {
+                        "context": {
+                            "required": false,
+                            "default": "view",
+                            "enum": [
+                                "view",
+                                "embed",
+                                "edit"
+                            ],
+                            "description": "Scope under which the request is made; determines fields present in response.",
+                            "type": "string"
+                        },
+                        "plugin": {
+                            "required": false,
+                            "type": "string"
+                        }
+                    }
+                },
+                {
+                    "methods": [
+                        "POST",
+                        "PUT",
+                        "PATCH"
+                    ],
+                    "args": {
+                        "context": {
+                            "required": false,
+                            "default": "view",
+                            "enum": [
+                                "view",
+                                "embed",
+                                "edit"
+                            ],
+                            "description": "Scope under which the request is made; determines fields present in response.",
+                            "type": "string"
+                        },
+                        "plugin": {
+                            "required": false,
+                            "type": "string"
+                        },
+                        "status": {
+                            "required": false,
+                            "enum": [
+                                "inactive",
+                                "active"
+                            ],
+                            "description": "The plugin activation status.",
+                            "type": "string"
+                        }
+                    }
+                },
+                {
+                    "methods": [
+                        "DELETE"
+                    ],
+                    "args": {
+                        "context": {
+                            "required": false,
+                            "default": "view",
+                            "enum": [
+                                "view",
+                                "embed",
+                                "edit"
+                            ],
+                            "description": "Scope under which the request is made; determines fields present in response.",
+                            "type": "string"
+                        },
+                        "plugin": {
+                            "required": false,
+                            "type": "string"
+                        }
+                    }
+                }
+            ]
+        },
+        "/wp/v2/block-directory/search": {
+            "namespace": "wp/v2",
+            "methods": [
+                "GET"
+            ],
+            "endpoints": [
+                {
+                    "methods": [
+                        "GET"
+                    ],
+                    "args": {
+                        "context": {
+                            "required": false,
+                            "default": "view",
+                            "enum": [
+                                "view"
+                            ],
+                            "description": "Scope under which the request is made; determines fields present in response.",
+                            "type": "string"
+                        },
+                        "page": {
+                            "required": false,
+                            "default": 1,
+                            "description": "Current page of the collection.",
+                            "type": "integer"
+                        },
+                        "per_page": {
+                            "required": false,
+                            "default": 10,
+                            "description": "Maximum number of items to be returned in result set.",
+                            "type": "integer"
+                        },
+                        "term": {
+                            "required": true,
+                            "description": "Limit result set to blocks matching the search term.",
+                            "type": "string"
+                        }
+                    }
+                }
+            ],
+            "_links": {
+                "self": [
+                    {
+                        "href": "http://example.org/index.php?rest_route=/wp/v2/block-directory/search"
+                    }
+                ]
+            }
         }
     }
 };
@@ -4990,7 +5003,9 @@ mockedApiResponse.oembed = {
                     ],
                     "args": {
                         "url": {
-                            "required": true
+                            "required": true,
+                            "description": "The URL of the resource for which to fetch oEmbed data.",
+                            "type": "string"
                         },
                         "format": {
                             "required": false,
@@ -5047,7 +5062,7 @@ mockedApiResponse.oembed = {
                         "discover": {
                             "required": false,
                             "default": true,
-                            "description": "Whether to perform an oEmbed discovery request for non-whitelisted providers.",
+                            "description": "Whether to perform an oEmbed discovery request for unsanctioned providers.",
                             "type": "boolean"
                         }
                     }
@@ -5815,7 +5830,7 @@ mockedApiResponse.TypesCollection = {
     "wp_block": {
         "description": "",
         "hierarchical": false,
-        "name": "Blocks",
+        "name": "Reusable Blocks",
         "slug": "wp_block",
         "taxonomies": [],
         "rest_base": "blocks",
@@ -6154,7 +6169,7 @@ mockedApiResponse.UsersCollection = [
     {
         "id": 1,
         "name": "admin",
-        "url": "",
+        "url": "http://example.org",
         "description": "",
         "link": "http://example.org/?author=1",
         "slug": "admin",

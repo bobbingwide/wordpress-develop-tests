@@ -121,16 +121,16 @@ class Tests_Post_WpUniquePostSlug extends WP_UnitTestCase {
 		$this->assertEquals( 'image', get_post( $attachment )->post_name );
 		$this->assertEquals( 'image-2', get_post( $two )->post_name );
 
-		// 'image' can be a child of image-2
+		// 'image' can be a child of image-2.
 		$this->assertEquals( 'image', wp_unique_post_slug( 'image', 0, 'publish', 'post-type-1', $two ) );
 
 		_unregister_post_type( 'post-type-1' );
 	}
 
 	/**
-	 * @dataProvider whitelist_post_statuses
+	 * @dataProvider allowed_post_statuses
 	 */
-	public function test_whitelisted_post_statuses_should_not_be_forced_to_be_unique( $status ) {
+	public function test_allowed_post_statuses_should_not_be_forced_to_be_unique( $status ) {
 		$p1 = self::factory()->post->create(
 			array(
 				'post_type' => 'post',
@@ -149,7 +149,7 @@ class Tests_Post_WpUniquePostSlug extends WP_UnitTestCase {
 		$this->assertSame( 'foo', $actual );
 	}
 
-	public function whitelist_post_statuses() {
+	public function allowed_post_statuses() {
 		return array(
 			array( 'draft' ),
 			array( 'pending' ),

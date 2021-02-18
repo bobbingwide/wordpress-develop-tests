@@ -50,14 +50,14 @@ class Tests_Term extends WP_UnitTestCase {
 	 * @ticket 5381
 	 */
 	function test_is_term_type() {
-		// insert a term
+		// Insert a term.
 		$term = rand_str();
 		$t    = wp_insert_term( $term, $this->taxonomy );
 		$this->assertInternalType( 'array', $t );
 		$term_obj = get_term_by( 'name', $term, $this->taxonomy );
 		$this->assertEquals( $t['term_id'], term_exists( $term_obj->slug ) );
 
-		// clean up
+		// Clean up.
 		$this->assertTrue( wp_delete_term( $t['term_id'], $this->taxonomy ) );
 	}
 
@@ -65,9 +65,32 @@ class Tests_Term extends WP_UnitTestCase {
 	 * @ticket 15919
 	 */
 	function test_wp_count_terms() {
-		$count = wp_count_terms( 'category', array( 'hide_empty' => true ) );
-		// there are 5 posts, all Uncategorized
+		$count = wp_count_terms(
+			array(
+				'hide_empty' => true,
+				'taxonomy'   => 'category',
+			)
+		);
+		// There are 5 posts, all Uncategorized.
 		$this->assertEquals( 1, $count );
+	}
+
+	/**
+	 * @ticket 36399
+	 */
+	function test_wp_count_terms_legacy_interoperability() {
+		self::factory()->tag->create_many( 5 );
+
+		// Counts all terms (1 default category, 5 tags).
+		$count = wp_count_terms();
+		$this->assertEquals( 6, $count );
+
+		// Counts only tags (5), with both current and legacy signature.
+		// Legacy usage should not trigger deprecated notice.
+		$count        = wp_count_terms( array( 'taxonomy' => 'post_tag' ) );
+		$legacy_count = wp_count_terms( 'post_tag' );
+		$this->assertEquals( 5, $count );
+		$this->assertEquals( $count, $legacy_count );
 	}
 
 	/**
@@ -127,23 +150,23 @@ class Tests_Term extends WP_UnitTestCase {
 		$term = rand_str();
 		$this->assertNull( category_exists( $term ) );
 
-		$initial_count = wp_count_terms( 'category' );
+		$initial_count = wp_count_terms( array( 'taxonomy' => 'category' ) );
 
 		$t = wp_insert_category( array( 'cat_name' => $term ) );
 		$this->assertTrue( is_numeric( $t ) );
 		$this->assertNotWPError( $t );
 		$this->assertTrue( $t > 0 );
-		$this->assertEquals( $initial_count + 1, wp_count_terms( 'category' ) );
+		$this->assertEquals( $initial_count + 1, wp_count_terms( array( 'taxonomy' => 'category' ) ) );
 
-		// make sure the term exists
+		// Make sure the term exists.
 		$this->assertTrue( term_exists( $term ) > 0 );
 		$this->assertTrue( term_exists( $t ) > 0 );
 
-		// now delete it
+		// Now delete it.
 		$this->assertTrue( wp_delete_category( $t ) );
 		$this->assertNull( term_exists( $term ) );
 		$this->assertNull( term_exists( $t ) );
-		$this->assertEquals( $initial_count, wp_count_terms( 'category' ) );
+		$this->assertEquals( $initial_count, wp_count_terms( array( 'taxonomy' => 'category' ) ) );
 	}
 
 	/**
@@ -156,9 +179,11 @@ class Tests_Term extends WP_UnitTestCase {
 		$this->assertInternalType( 'array', $post->post_category );
 		$this->assertEquals( 1, count( $post->post_category ) );
 		$this->assertEquals( get_option( 'default_category' ), $post->post_category[0] );
+
 		$term1 = wp_insert_term( 'Foo', 'category' );
 		$term2 = wp_insert_term( 'Bar', 'category' );
 		$term3 = wp_insert_term( 'Baz', 'category' );
+
 		wp_set_post_categories( $post_id, array( $term1['term_id'], $term2['term_id'] ) );
 		$this->assertEquals( 2, count( $post->post_category ) );
 		$this->assertEquals( array( $term2['term_id'], $term1['term_id'] ), $post->post_category );
@@ -167,6 +192,7 @@ class Tests_Term extends WP_UnitTestCase {
 		$this->assertEquals( array( $term2['term_id'], $term3['term_id'], $term1['term_id'] ), $post->post_category );
 
 		$term4 = wp_insert_term( 'Burrito', 'category' );
+
 		wp_set_post_categories( $post_id, $term4['term_id'] );
 		$this->assertEquals( array( $term4['term_id'] ), $post->post_category );
 
@@ -183,6 +209,35 @@ class Tests_Term extends WP_UnitTestCase {
 	}
 
 	/**
+	 * @ticket 43516
+	 */
+	function test_wp_set_post_categories_sets_default_category_for_custom_post_types() {
+		add_filter( 'default_category_post_types', array( $this, 'filter_default_category_post_types' ) );
+
+		register_post_type( 'cpt', array( 'taxonomies' => array( 'category' ) ) );
+
+		$post_id = self::factory()->post->create( array( 'post_type' => 'cpt' ) );
+		$post    = get_post( $post_id );
+
+		$this->assertEquals( get_option( 'default_category' ), $post->post_category[0] );
+
+		$term = wp_insert_term( 'Foo', 'category' );
+
+		wp_set_post_categories( $post_id, $term['term_id'] );
+		$this->assertEquals( $term['term_id'], $post->post_category[0] );
+
+		wp_set_post_categories( $post_id, array() );
+		$this->assertEquals( get_option( 'default_category' ), $post->post_category[0] );
+
+		remove_filter( 'default_category_post_types', array( $this, 'filter_default_category_post_types' ) );
+	}
+
+	function filter_default_category_post_types( $post_types ) {
+		$post_types[] = 'cpt';
+		return $post_types;
+	}
+
+	/**
 	 * @ticket 25852
 	 */
 	function test_sanitize_term_field() {
@@ -192,18 +247,6 @@ class Tests_Term extends WP_UnitTestCase {
 		$this->assertEquals( 1, sanitize_term_field( 'parent', 1, $term['term_id'], $this->taxonomy, 'raw' ) );
 		$this->assertEquals( 0, sanitize_term_field( 'parent', -1, $term['term_id'], $this->taxonomy, 'raw' ) );
 		$this->assertEquals( 0, sanitize_term_field( 'parent', '', $term['term_id'], $this->taxonomy, 'raw' ) );
-	}
-
-	private function assertPostHasTerms( $post_id, $expected_term_ids, $taxonomy ) {
-		$assigned_term_ids = wp_get_object_terms(
-			$post_id,
-			$taxonomy,
-			array(
-				'fields' => 'ids',
-			)
-		);
-
-		$this->assertEquals( $expected_term_ids, $assigned_term_ids );
 	}
 
 	/**

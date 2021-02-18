@@ -12,7 +12,7 @@
  *
  * @group functions.php
  * @group post
- * @covers do_enclose
+ * @covers ::do_enclose
  *
  * @since 5.3.0
  */
@@ -135,6 +135,10 @@ class Tests_Functions_DoEnclose extends WP_UnitTestCase {
 				'expected' => "https://example.com/wp-content/uploads/2018/06/audio.ogg\n321\naudio/ogg\n" .
 								"https://example.com/wp-content/uploads/2018/06/movie.mp4\n123\nvideo/mp4\n",
 			),
+			'no-path'               => array(
+				'content'  => 'https://example.com?test=1',
+				'expected' => '',
+			),
 		);
 	}
 
@@ -233,7 +237,7 @@ class Tests_Functions_DoEnclose extends WP_UnitTestCase {
 	 *
 	 * @param  array $post_links An array of enclosure links.
 	 * @param  int   $post_id    Post ID.
-	 * @return array $post_links An array of enclosure links.
+	 * @return array An array of enclosure links.
 	 */
 	public function filter_enclosure_links( $enclosure_links, $post_id ) {
 		// Replace the link host to contain the post ID, to test both filter input arguments.

@@ -60,7 +60,7 @@ class WP_Test_Block_Render extends WP_UnitTestCase {
 
 		$actual_html = do_blocks( $original_html );
 
-		$this->assertEquals( $expected_html, $actual_html );
+		$this->assertEqualsIgnoreEOL( $expected_html, $actual_html );
 	}
 
 	/**
@@ -287,6 +287,24 @@ class WP_Test_Block_Render extends WP_UnitTestCase {
 		do_blocks( '<!-- wp:core/test /-->' );
 
 		$this->assertEquals( $global_post, $post );
+	}
+
+	public function test_render_latest_comments_on_password_protected_post() {
+		$post_id      = self::factory()->post->create(
+			array(
+				'post_password' => 'password',
+			)
+		);
+		$comment_text = wp_generate_password( 10, false );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $post_id,
+				'comment_content' => $comment_text,
+			)
+		);
+		$comments = do_blocks( '<!-- wp:latest-comments {"commentsToShow":1,"displayExcerpt":true} /-->' );
+
+		$this->assertNotContains( $comment_text, $comments );
 	}
 
 	/**

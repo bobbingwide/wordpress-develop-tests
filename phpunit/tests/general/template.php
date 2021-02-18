@@ -6,7 +6,7 @@
  * @group site_icon
  */
 
-require_once( ABSPATH . 'wp-admin/includes/class-wp-site-icon.php' );
+require_once ABSPATH . 'wp-admin/includes/class-wp-site-icon.php';
 
 class Tests_General_Template extends WP_UnitTestCase {
 	protected $wp_site_icon;
@@ -105,7 +105,7 @@ class Tests_General_Template extends WP_UnitTestCase {
 		$output = array(
 			sprintf( '<link rel="icon" href="%s" sizes="32x32" />', esc_url( get_site_icon_url( 32 ) ) ),
 			sprintf( '<link rel="icon" href="%s" sizes="192x192" />', esc_url( get_site_icon_url( 192 ) ) ),
-			sprintf( '<link rel="apple-touch-icon-precomposed" href="%s" />', esc_url( get_site_icon_url( 180 ) ) ),
+			sprintf( '<link rel="apple-touch-icon" href="%s" />', esc_url( get_site_icon_url( 180 ) ) ),
 			sprintf( '<meta name="msapplication-TileImage" content="%s" />', esc_url( get_site_icon_url( 270 ) ) ),
 			'',
 		);
@@ -126,7 +126,7 @@ class Tests_General_Template extends WP_UnitTestCase {
 		$output = array(
 			sprintf( '<link rel="icon" href="%s" sizes="32x32" />', esc_url( get_site_icon_url( 32 ) ) ),
 			sprintf( '<link rel="icon" href="%s" sizes="192x192" />', esc_url( get_site_icon_url( 192 ) ) ),
-			sprintf( '<link rel="apple-touch-icon-precomposed" href="%s" />', esc_url( get_site_icon_url( 180 ) ) ),
+			sprintf( '<link rel="apple-touch-icon" href="%s" />', esc_url( get_site_icon_url( 180 ) ) ),
 			sprintf( '<meta name="msapplication-TileImage" content="%s" />', esc_url( get_site_icon_url( 270 ) ) ),
 			sprintf( '<link rel="apple-touch-icon" sizes="150x150" href="%s" />', esc_url( get_site_icon_url( 150 ) ) ),
 			'',
@@ -175,7 +175,7 @@ class Tests_General_Template extends WP_UnitTestCase {
 		$output = array(
 			sprintf( '<link rel="icon" href="%s" sizes="32x32" />', esc_url( wp_get_attachment_image_url( $attachment_id, 32 ) ) ),
 			sprintf( '<link rel="icon" href="%s" sizes="192x192" />', esc_url( wp_get_attachment_image_url( $attachment_id, 192 ) ) ),
-			sprintf( '<link rel="apple-touch-icon-precomposed" href="%s" />', esc_url( wp_get_attachment_image_url( $attachment_id, 180 ) ) ),
+			sprintf( '<link rel="apple-touch-icon" href="%s" />', esc_url( wp_get_attachment_image_url( $attachment_id, 180 ) ) ),
 			sprintf( '<meta name="msapplication-TileImage" content="%s" />', esc_url( wp_get_attachment_image_url( $attachment_id, 270 ) ) ),
 			'',
 		);
@@ -234,7 +234,7 @@ class Tests_General_Template extends WP_UnitTestCase {
 		$upload              = wp_upload_bits( wp_basename( $filename ), null, $contents );
 		$this->site_icon_url = $upload['url'];
 
-		// Save the data
+		// Save the data.
 		$this->site_icon_id = $this->_make_attachment( $upload );
 		return $this->site_icon_id;
 	}
@@ -308,7 +308,8 @@ class Tests_General_Template extends WP_UnitTestCase {
 		$this->_set_custom_logo();
 
 		$custom_logo_attr = array(
-			'class' => 'custom-logo',
+			'class'   => 'custom-logo',
+			'loading' => false,
 		);
 
 		// If the logo alt attribute is empty, use the site title.
@@ -337,7 +338,8 @@ class Tests_General_Template extends WP_UnitTestCase {
 		$this->_set_custom_logo();
 
 		$custom_logo_attr = array(
-			'class' => 'custom-logo',
+			'class'   => 'custom-logo',
+			'loading' => false,
 		);
 
 		// If the logo alt attribute is empty, use the site title.
@@ -368,7 +370,8 @@ class Tests_General_Template extends WP_UnitTestCase {
 			'full',
 			false,
 			array(
-				'class' => 'custom-logo',
+				'class'   => 'custom-logo',
+				'loading' => false,
 			)
 		);
 
@@ -432,8 +435,8 @@ class Tests_General_Template extends WP_UnitTestCase {
 		$GLOBALS['post'] = $post;
 
 		$expected = '1453390476';
-		$d        = 'G';
-		$actual   = get_the_modified_time( $d );
+		$format   = 'G';
+		$actual   = get_the_modified_time( $format );
 		$this->assertEquals( $expected, $actual );
 	}
 
@@ -445,7 +448,7 @@ class Tests_General_Template extends WP_UnitTestCase {
 	 * @since 4.6.0
 	 */
 	function test_get_the_modified_time_failures_are_filtered() {
-		// Remove global post objet
+		// Remove global post object.
 		$GLOBALS['post'] = null;
 
 		$expected = 'filtered modified time failure result';
@@ -479,9 +482,9 @@ class Tests_General_Template extends WP_UnitTestCase {
 			'post_date_gmt' => '2016-01-21 15:34:36',
 		);
 		$post_id  = $this->factory->post->create( $details );
-		$d        = 'Y-m-d';
+		$format   = 'Y-m-d';
 		$expected = '2016-01-21';
-		$actual   = get_the_modified_date( $d, $post_id );
+		$actual   = get_the_modified_date( $format, $post_id );
 		$this->assertEquals( $expected, $actual );
 	}
 
@@ -503,8 +506,8 @@ class Tests_General_Template extends WP_UnitTestCase {
 		$GLOBALS['post'] = $post;
 
 		$expected = '2016-01-21';
-		$d        = 'Y-m-d';
-		$actual   = get_the_modified_date( $d );
+		$format   = 'Y-m-d';
+		$actual   = get_the_modified_date( $format );
 		$this->assertEquals( $expected, $actual );
 	}
 
@@ -516,7 +519,7 @@ class Tests_General_Template extends WP_UnitTestCase {
 	 * @since 4.6.0
 	 */
 	function test_get_the_modified_date_failures_are_filtered() {
-		// Remove global post objet
+		// Remove global post object.
 		$GLOBALS['post'] = null;
 
 		$expected = 'filtered modified date failure result';
@@ -550,9 +553,9 @@ class Tests_General_Template extends WP_UnitTestCase {
 			'post_date_gmt' => '2016-01-21 15:34:36',
 		);
 		$post_id  = $this->factory->post->create( $details );
-		$d        = 'G';
+		$format   = 'G';
 		$expected = '1453390476';
-		$actual   = get_the_modified_time( $d, $post_id );
+		$actual   = get_the_modified_time( $format, $post_id );
 		$this->assertEquals( $expected, $actual );
 	}
 
@@ -631,15 +634,60 @@ class Tests_General_Template extends WP_UnitTestCase {
 	/**
 	 * @ticket 40969
 	 */
-	function test_get_template_part_returns_nothing() {
-		ob_start();
+	function test_get_header_returns_nothing_on_success() {
+		$this->expectOutputRegex( '/Header/' );
+
+		// The `get_header()` function must not return anything
+		// due to themes in the wild that may echo its return value.
+		$this->assertNull( get_header() );
+	}
+
+	/**
+	 * @ticket 40969
+	 */
+	function test_get_footer_returns_nothing_on_success() {
+		$this->expectOutputRegex( '/Footer/' );
+
+		// The `get_footer()` function must not return anything
+		// due to themes in the wild that may echo its return value.
+		$this->assertNull( get_footer() );
+	}
+
+	/**
+	 * @ticket 40969
+	 */
+	function test_get_sidebar_returns_nothing_on_success() {
+		$this->expectOutputRegex( '/Sidebar/' );
+
+		// The `get_sidebar()` function must not return anything
+		// due to themes in the wild that may echo its return value.
+		$this->assertNull( get_sidebar() );
+	}
+
+	/**
+	 * @ticket 40969
+	 */
+	function test_get_template_part_returns_nothing_on_success() {
+		$this->expectOutputRegex( '/Template Part/' );
 
 		// The `get_template_part()` function must not return anything
 		// due to themes in the wild that echo its return value.
-		$part   = get_template_part( 'template', 'part' );
-		$output = ob_get_clean();
+		$this->assertNull( get_template_part( 'template', 'part' ) );
+	}
 
-		self::assertSame( 'Template Part', trim( $output ) );
-		self::assertSame( null, $part );
+	/**
+	 * @ticket 40969
+	 */
+	function test_get_template_part_returns_false_on_failure() {
+		$this->assertFalse( get_template_part( 'non-existing-template' ) );
+	}
+
+	/**
+	 * @ticket 21676
+	 */
+	function test_get_template_part_passes_arguments_to_template() {
+		$this->expectOutputRegex( '/{"foo":"baz"}/' );
+
+		get_template_part( 'template', 'part', array( 'foo' => 'baz' ) );
 	}
 }

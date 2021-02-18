@@ -33,13 +33,13 @@ class WP_Test_REST_Taxonomies_Controller extends WP_Test_REST_Controller_Testcas
 	}
 
 	public function test_context_param() {
-		// Collection
+		// Collection.
 		$request  = new WP_REST_Request( 'OPTIONS', '/wp/v2/taxonomies' );
 		$response = rest_get_server()->dispatch( $request );
 		$data     = $response->get_data();
 		$this->assertEquals( 'view', $data['endpoints'][0]['args']['context']['default'] );
 		$this->assertEqualSets( array( 'view', 'edit', 'embed' ), $data['endpoints'][0]['args']['context']['enum'] );
-		// Single
+		// Single.
 		$request  = new WP_REST_Request( 'OPTIONS', '/wp/v2/taxonomies/post_tag' );
 		$response = rest_get_server()->dispatch( $request );
 		$data     = $response->get_data();
@@ -246,7 +246,7 @@ class WP_Test_REST_Taxonomies_Controller extends WP_Test_REST_Controller_Testcas
 	 * Utility function to filter down to only public taxonomies
 	 */
 	private function get_public_taxonomies( $taxonomies ) {
-		// Pass through array_values to re-index after filtering
+		// Pass through array_values to re-index after filtering.
 		return array_values( array_filter( $taxonomies, array( $this, 'is_public' ) ) );
 	}
 
@@ -289,6 +289,34 @@ class WP_Test_REST_Taxonomies_Controller extends WP_Test_REST_Controller_Testcas
 		$data       = $response->get_data();
 		$taxonomies = $this->get_public_taxonomies( get_object_taxonomies( $type, 'objects' ) );
 		$this->assertEquals( count( $taxonomies ), count( $data ) );
+	}
+
+	/**
+	 * @ticket 49116
+	 */
+	public function test_get_for_taxonomy_reuses_same_instance() {
+		$this->assertSame(
+			get_taxonomy( 'category' )->get_rest_controller(),
+			get_taxonomy( 'category' )->get_rest_controller()
+		);
+	}
+
+	/**
+	 * @ticket 49116
+	 */
+	public function test_get_for_taxonomy_returns_terms_controller_if_custom_class_not_specified() {
+		register_taxonomy(
+			'test',
+			'post',
+			array(
+				'show_in_rest' => true,
+			)
+		);
+
+		$this->assertInstanceOf(
+			WP_REST_Terms_Controller::class,
+			get_taxonomy( 'test' )->get_rest_controller()
+		);
 	}
 
 }

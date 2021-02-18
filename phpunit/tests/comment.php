@@ -6,6 +6,7 @@
 class Tests_Comment extends WP_UnitTestCase {
 	protected static $user_id;
 	protected static $post_id;
+	protected static $notify_message = '';
 
 	public function setUp() {
 		parent::setUp();
@@ -29,29 +30,33 @@ class Tests_Comment extends WP_UnitTestCase {
 		);
 	}
 
-	function test_wp_update_comment() {
-		$post     = self::factory()->post->create_and_get(
+	public function test_wp_update_comment() {
+		$post  = self::factory()->post->create_and_get(
 			array(
 				'post_title' => 'some-post',
 				'post_type'  => 'post',
 			)
 		);
-		$post2    = self::factory()->post->create_and_get(
+		$post2 = self::factory()->post->create_and_get(
 			array(
 				'post_title' => 'some-post-2',
 				'post_type'  => 'post',
 			)
 		);
+
 		$comments = self::factory()->comment->create_post_comments( $post->ID, 5 );
-		$result   = wp_update_comment(
+
+		$result = wp_update_comment(
 			array(
 				'comment_ID'     => $comments[0],
 				'comment_parent' => $comments[1],
 			)
 		);
 		$this->assertEquals( 1, $result );
+
 		$comment = get_comment( $comments[0] );
 		$this->assertEquals( $comments[1], $comment->comment_parent );
+
 		$result = wp_update_comment(
 			array(
 				'comment_ID'     => $comments[0],
@@ -59,12 +64,14 @@ class Tests_Comment extends WP_UnitTestCase {
 			)
 		);
 		$this->assertEquals( 0, $result );
-		$result  = wp_update_comment(
+
+		$result = wp_update_comment(
 			array(
 				'comment_ID'      => $comments[0],
 				'comment_post_ID' => $post2->ID,
 			)
 		);
+
 		$comment = get_comment( $comments[0] );
 		$this->assertEquals( $post2->ID, $comment->comment_post_ID );
 	}
@@ -72,7 +79,7 @@ class Tests_Comment extends WP_UnitTestCase {
 	/**
 	 * @ticket 30627
 	 */
-	function test_wp_update_comment_updates_comment_type() {
+	public function test_wp_update_comment_updates_comment_type() {
 		$comment_id = self::factory()->comment->create( array( 'comment_post_ID' => self::$post_id ) );
 
 		wp_update_comment(
@@ -89,8 +96,9 @@ class Tests_Comment extends WP_UnitTestCase {
 	/**
 	 * @ticket 36784
 	 */
-	function test_wp_update_comment_updates_comment_meta() {
+	public function test_wp_update_comment_updates_comment_meta() {
 		$comment_id = self::factory()->comment->create( array( 'comment_post_ID' => self::$post_id ) );
+
 		wp_update_comment(
 			array(
 				'comment_ID'   => $comment_id,
@@ -100,13 +108,14 @@ class Tests_Comment extends WP_UnitTestCase {
 				),
 			)
 		);
+
 		$this->assertEquals( 'fire', get_comment_meta( $comment_id, 'sauce', true ) );
 	}
 
 	/**
 	 * @ticket 30307
 	 */
-	function test_wp_update_comment_updates_user_id() {
+	public function test_wp_update_comment_updates_user_id() {
 		$comment_id = self::factory()->comment->create( array( 'comment_post_ID' => self::$post_id ) );
 
 		wp_update_comment(
@@ -123,7 +132,7 @@ class Tests_Comment extends WP_UnitTestCase {
 	/**
 	 * @ticket 34954
 	 */
-	function test_wp_update_comment_with_no_post_id() {
+	public function test_wp_update_comment_with_no_post_id() {
 		$comment_id = self::factory()->comment->create( array( 'comment_post_ID' => 0 ) );
 
 		$updated_comment_text = 'I should be able to update a comment with a Post ID of zero';
@@ -139,6 +148,57 @@ class Tests_Comment extends WP_UnitTestCase {
 
 		$comment = get_comment( $comment_id );
 		$this->assertEquals( $updated_comment_text, $comment->comment_content );
+	}
+
+	/**
+	 * @ticket 39732
+	 */
+	public function test_wp_update_comment_returns_false_for_invalid_comment_or_post_id() {
+		$comment_id = self::factory()->comment->create( array( 'comment_post_ID' => self::$post_id ) );
+
+		$update = wp_update_comment(
+			array(
+				'comment_ID'      => -1,
+				'comment_post_ID' => self::$post_id,
+			)
+		);
+		$this->assertSame( false, $update );
+
+		$update = wp_update_comment(
+			array(
+				'comment_ID'      => $comment_id,
+				'comment_post_ID' => -1,
+			)
+		);
+		$this->assertSame( false, $update );
+	}
+
+	/**
+	 * @ticket 39732
+	 */
+	public function test_wp_update_comment_is_wp_error() {
+		$comment_id = self::factory()->comment->create( array( 'comment_post_ID' => self::$post_id ) );
+
+		add_filter( 'wp_update_comment_data', array( $this, '_wp_update_comment_data_filter' ), 10, 3 );
+
+		$result = wp_update_comment(
+			array(
+				'comment_ID'   => $comment_id,
+				'comment_type' => 'pingback',
+			),
+			true
+		);
+
+		remove_filter( 'wp_update_comment_data', array( $this, '_wp_update_comment_data_filter' ), 10, 3 );
+
+		$this->assertWPError( $result );
+	}
+
+	/**
+	 * Blocks comments from being updated by returning WP_Error.
+	 */
+	public function _wp_update_comment_data_filter( $data, $comment, $commentarr ) {
+		return new WP_Error( 'comment_wrong', 'wp_update_comment_data filter fails for this comment.', 500 );
 	}
 
 	public function test_get_approved_comments() {
@@ -191,7 +251,7 @@ class Tests_Comment extends WP_UnitTestCase {
 
 		$found = get_approved_comments( self::$post_id );
 
-		// all comments types will be returned
+		// All comment types will be returned.
 		$this->assertEquals( array( $ca1, $ca2, $c2, $c3, $c4, $c5 ), wp_list_pluck( $found, 'comment_ID' ) );
 	}
 
@@ -432,6 +492,66 @@ class Tests_Comment extends WP_UnitTestCase {
 
 		$sent = wp_new_comment_notify_postauthor( $c );
 		$this->assertFalse( $sent );
+	}
+
+	/**
+	 * @ticket 43805
+	 */
+	public function test_wp_new_comment_notify_postauthor_content_should_include_link_to_parent() {
+		$c1 = self::factory()->comment->create(
+			array(
+				'comment_post_ID' => self::$post_id,
+			)
+		);
+
+		$c2 = self::factory()->comment->create(
+			array(
+				'comment_post_ID' => self::$post_id,
+				'comment_parent'  => $c1,
+			)
+		);
+
+		add_filter( 'comment_notification_text', array( $this, 'save_comment_notification_text' ) );
+		wp_new_comment_notify_postauthor( $c2 );
+		remove_filter( 'comment_notification_text', array( $this, 'save_comment_notification_text' ) );
+
+		$this->assertContains( admin_url( "comment.php?action=editcomment&c={$c1}" ), self::$notify_message );
+	}
+
+	/**
+	 * @ticket 43805
+	 */
+	public function test_wp_new_comment_notify_moderator_content_should_include_link_to_parent() {
+		$c1 = self::factory()->comment->create(
+			array(
+				'comment_post_ID' => self::$post_id,
+			)
+		);
+
+		$c2 = self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => self::$post_id,
+				'comment_parent'   => $c1,
+				'comment_approved' => '0',
+			)
+		);
+
+		add_filter( 'comment_moderation_text', array( $this, 'save_comment_notification_text' ) );
+		wp_new_comment_notify_moderator( $c2 );
+		remove_filter( 'comment_moderation_text', array( $this, 'save_comment_notification_text' ) );
+
+		$this->assertContains( admin_url( "comment.php?action=editcomment&c={$c1}" ), self::$notify_message );
+	}
+
+	/**
+	 * Callback for the `comment_notification_text` & `comment_moderation_text` filters.
+	 *
+	 * @param string $notify_message The comment notification or moderation email text.
+	 * @return string
+	 */
+	public function save_comment_notification_text( $notify_message = '' ) {
+		self::$notify_message = $notify_message;
+		return $notify_message;
 	}
 
 	/**

@@ -1,6 +1,6 @@
 <?php
 /**
- * Testing ajax customize manager functionality
+ * Testing Ajax customize manager functionality.
  *
  * @package    WordPress
  * @subpackage UnitTests
@@ -103,7 +103,7 @@ class Tests_Ajax_CustomizeManager extends WP_Ajax_UnitTestCase {
 	 * Test WP_Customize_Manager::save().
 	 *
 	 * @ticket 30937
-	 * @covers WP_Customize_Manager::save()
+	 * @covers WP_Customize_Manager::save
 	 */
 	function test_save_failures() {
 		global $wp_customize;
@@ -270,7 +270,7 @@ class Tests_Ajax_CustomizeManager extends WP_Ajax_UnitTestCase {
 	 * Test WP_Customize_Manager::save().
 	 *
 	 * @ticket 30937
-	 * @covers WP_Customize_Manager::save()
+	 * @covers WP_Customize_Manager::save
 	 */
 	function test_save_success_publish_create() {
 		$wp_customize = $this->set_up_valid_state();
@@ -299,7 +299,7 @@ class Tests_Ajax_CustomizeManager extends WP_Ajax_UnitTestCase {
 	 * Test WP_Customize_Manager::save().
 	 *
 	 * @ticket 30937
-	 * @covers WP_Customize_Manager::save()
+	 * @covers WP_Customize_Manager::save
 	 */
 	function test_save_success_publish_edit() {
 		$uuid = wp_generate_uuid4();
@@ -338,7 +338,7 @@ class Tests_Ajax_CustomizeManager extends WP_Ajax_UnitTestCase {
 	 * Test WP_Customize_Manager::save().
 	 *
 	 * @ticket 38943
-	 * @covers WP_Customize_Manager::save()
+	 * @covers WP_Customize_Manager::save
 	 */
 	function test_success_save_post_date() {
 		$uuid         = wp_generate_uuid4();
@@ -436,7 +436,7 @@ class Tests_Ajax_CustomizeManager extends WP_Ajax_UnitTestCase {
 	 * Test WP_Customize_Manager::save().
 	 *
 	 * @ticket 39896
-	 * @covers WP_Customize_Manager::save()
+	 * @covers WP_Customize_Manager::save
 	 */
 	public function test_save_autosave() {
 		$uuid = wp_generate_uuid4();
@@ -482,7 +482,7 @@ class Tests_Ajax_CustomizeManager extends WP_Ajax_UnitTestCase {
 	 * Test request for trashing a changeset.
 	 *
 	 * @ticket 39896
-	 * @covers WP_Customize_Manager::handle_changeset_trash_request()
+	 * @covers WP_Customize_Manager::handle_changeset_trash_request
 	 */
 	public function test_handle_changeset_trash_request() {
 		$uuid         = wp_generate_uuid4();
@@ -513,6 +513,16 @@ class Tests_Ajax_CustomizeManager extends WP_Ajax_UnitTestCase {
 		$this->assertFalse( $this->_last_response_parsed['success'] );
 		$this->assertEquals( 'changeset_trash_unauthorized', $this->_last_response_parsed['data']['code'] );
 		remove_filter( 'map_meta_cap', array( $this, 'return_do_not_allow' ) );
+
+		$lock_user_id  = static::factory()->user->create( array( 'role' => 'administrator' ) );
+		$previous_user = get_current_user_id();
+		wp_set_current_user( $lock_user_id );
+		$wp_customize->set_changeset_lock( $wp_customize->changeset_post_id() );
+		wp_set_current_user( $previous_user );
+		$this->make_ajax_call( 'customize_trash' );
+		$this->assertFalse( $this->_last_response_parsed['success'] );
+		$this->assertEquals( 'changeset_locked', $this->_last_response_parsed['data']['code'] );
+		delete_post_meta( $wp_customize->changeset_post_id(), '_edit_lock' );
 
 		wp_update_post(
 			array(
@@ -560,8 +570,8 @@ class Tests_Ajax_CustomizeManager extends WP_Ajax_UnitTestCase {
 	 * Test request for dismissing autosave changesets.
 	 *
 	 * @ticket 39896
-	 * @covers WP_Customize_Manager::handle_dismiss_autosave_or_lock_request()
-	 * @covers WP_Customize_Manager::dismiss_user_auto_draft_changesets()
+	 * @covers WP_Customize_Manager::handle_dismiss_autosave_or_lock_request
+	 * @covers WP_Customize_Manager::dismiss_user_auto_draft_changesets
 	 */
 	public function test_handle_dismiss_autosave_or_lock_request() {
 		$uuid          = wp_generate_uuid4();

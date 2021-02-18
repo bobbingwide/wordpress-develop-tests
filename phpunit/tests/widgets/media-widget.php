@@ -50,8 +50,8 @@ class Test_WP_Widget_Media extends WP_UnitTestCase {
 	/**
 	 * Test constructor.
 	 *
-	 * @covers WP_Widget_Media::__construct()
-	 * @covers WP_Widget_Media::_register()
+	 * @covers WP_Widget_Media::__construct
+	 * @covers WP_Widget_Media::_register
 	 */
 	function test_constructor() {
 		$widget = $this->get_mocked_class_instance();
@@ -106,8 +106,8 @@ class Test_WP_Widget_Media extends WP_UnitTestCase {
 	 * Test constructor in customize preview.
 	 *
 	 * @global WP_Customize_Manager $wp_customize
-	 * @covers WP_Widget_Media::__construct()
-	 * @covers WP_Widget_Media::_register()
+	 * @covers WP_Widget_Media::__construct
+	 * @covers WP_Widget_Media::_register
 	 */
 	function test_constructor_in_customize_preview() {
 		global $wp_customize;
@@ -138,7 +138,7 @@ class Test_WP_Widget_Media extends WP_UnitTestCase {
 	 */
 	function test_is_attachment_with_mime_type() {
 
-		$test_image = '/tmp/canola.jpg';
+		$test_image = get_temp_dir() . 'canola.jpg';
 		copy( DIR_TESTDATA . '/images/canola.jpg', $test_image );
 		$attachment_id = self::factory()->attachment->create_object(
 			array(
@@ -228,7 +228,7 @@ class Test_WP_Widget_Media extends WP_UnitTestCase {
 	/**
 	 * Test update method.
 	 *
-	 * @covers WP_Widget_Media::update()
+	 * @covers WP_Widget_Media::update
 	 */
 	function test_update() {
 		$widget   = $this->get_mocked_class_instance();
@@ -314,8 +314,8 @@ class Test_WP_Widget_Media extends WP_UnitTestCase {
 	/**
 	 * Test widget method.
 	 *
-	 * @covers WP_Widget_Media::widget()
-	 * @covers WP_Widget_Media::render_media()
+	 * @covers WP_Widget_Media::widget
+	 * @covers WP_Widget_Media::render_media
 	 */
 	function test_widget() {
 		$args     = array(
@@ -389,7 +389,7 @@ class Test_WP_Widget_Media extends WP_UnitTestCase {
 	/**
 	 * Test form method.
 	 *
-	 * @covers WP_Widget_Media::form()
+	 * @covers WP_Widget_Media::form
 	 */
 	function test_form() {
 		$widget = $this->get_mocked_class_instance();
@@ -406,7 +406,7 @@ class Test_WP_Widget_Media extends WP_UnitTestCase {
 	/**
 	 * Test display_media_state method.
 	 *
-	 * @covers WP_Widget_Media::display_media_state()
+	 * @covers WP_Widget_Media::display_media_state
 	 */
 	function test_display_media_state() {
 		$widget        = $this->get_mocked_class_instance();
@@ -448,7 +448,7 @@ class Test_WP_Widget_Media extends WP_UnitTestCase {
 	/**
 	 * Test enqueue_admin_scripts method.
 	 *
-	 * @covers WP_Widget_Media::enqueue_admin_scripts()
+	 * @covers WP_Widget_Media::enqueue_admin_scripts
 	 */
 	function test_enqueue_admin_scripts() {
 		set_current_screen( 'widgets.php' );
@@ -476,7 +476,7 @@ class Test_WP_Widget_Media extends WP_UnitTestCase {
 	/**
 	 * Test has_content method.
 	 *
-	 * @covers WP_Widget_Media::has_content()
+	 * @covers WP_Widget_Media::has_content
 	 */
 	function test_has_content() {
 		$attachment_id = self::factory()->attachment->create_object(

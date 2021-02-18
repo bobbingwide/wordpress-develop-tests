@@ -2,11 +2,7 @@
 /*
 Plugin Name: wordpress-develop-tests
 Plugin URI: https://develop.wp-a2z.org/oik-plugins/wordpress-develop-tests
-<<<<<<< HEAD
 Description: Automated testing of WordPress using PHPUnit 8
-=======
-Description: Automated testing of WordPress using PHPUnit
->>>>>>> origin/master
 Version: 5.3
 Author: bobbingwide
 Author URI: https://www.bobbingwide.com/about-bobbing-wide

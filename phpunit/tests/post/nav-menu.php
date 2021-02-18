@@ -83,7 +83,7 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 			)
 		);
 
-		// Item without menu-item-object arg
+		// Item without menu-item-object arg.
 		$post_2_insert = wp_update_nav_menu_item(
 			$this->menu_id,
 			0,
@@ -142,7 +142,7 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 	 */
 	function test_orphan_nav_menu_item() {
 
-		// Create an orphan nav menu item
+		// Create an orphan nav menu item.
 		$custom_item_id = wp_update_nav_menu_item(
 			0,
 			0,
@@ -154,11 +154,11 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 			)
 		);
 
-		// Confirm it saved properly
+		// Confirm it saved properly.
 		$custom_item = wp_setup_nav_menu_item( get_post( $custom_item_id ) );
 		$this->assertEquals( 'Wordpress.org', $custom_item->title );
 
-		// Update the orphan with an associated nav menu
+		// Update the orphan with an associated nav menu.
 		wp_update_nav_menu_item(
 			$this->menu_id,
 			$custom_item_id,
@@ -225,14 +225,14 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 	 * @ticket 29460
 	 */
 	function test_orderby_name_by_default() {
-		// We are going to create a random number of menus (min 2, max 10)
+		// We are going to create a random number of menus (min 2, max 10).
 		$menus_no = rand( 2, 10 );
 
 		for ( $i = 0; $i <= $menus_no; $i++ ) {
 			wp_create_nav_menu( rand_str() );
 		}
 
-		// This is the expected array of menu names
+		// This is the expected array of menu names.
 		$expected_nav_menus_names = wp_list_pluck(
 			get_terms(
 				'nav_menu',
@@ -244,7 +244,7 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 			'name'
 		);
 
-		// And this is what we got when calling wp_get_nav_menus()
+		// And this is what we got when calling wp_get_nav_menus().
 		$nav_menus_names = wp_list_pluck( wp_get_nav_menus(), 'name' );
 
 		$this->assertEquals( $nav_menus_names, $expected_nav_menus_names );
@@ -311,7 +311,7 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 		$post_type_archive_item    = wp_setup_nav_menu_item( get_post( $post_type_archive_item_id ) );
 
 		$this->assertEquals( $post_type_slug, $post_type_archive_item->title );
-		$this->assertEquals( $post_type_description, $post_type_archive_item->description ); //fail!!!
+		$this->assertEquals( $post_type_description, $post_type_archive_item->description ); // Fail!
 	}
 
 	/**
@@ -416,7 +416,7 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 			)
 		);
 
-		$post_inser2 = wp_update_nav_menu_item(
+		$post_insert2 = wp_update_nav_menu_item(
 			$this->menu_id,
 			0,
 			array(
@@ -459,11 +459,11 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 			)
 		);
 
-		// The markup should include whitespace between <li>s
+		// The markup should include whitespace between <li>'s.
 		$this->assertRegExp( '/\s<li.*>|<\/li>\s/U', $menu );
 		$this->assertNotRegExp( '/<\/li><li.*>/U', $menu );
 
-		// Whitepsace suppressed.
+		// Whitespace suppressed.
 		$menu = wp_nav_menu(
 			array(
 				'echo'         => false,
@@ -472,7 +472,7 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 			)
 		);
 
-		// The markup should not include whitespace around <li>s
+		// The markup should not include whitespace around <li>'s.
 		$this->assertNotRegExp( '/\s<li.*>|<\/li>\s/U', $menu );
 		$this->assertRegExp( '/><li.*>|<\/li></U', $menu );
 	}
@@ -679,7 +679,7 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 	/**
 	 * Test _wp_delete_customize_changeset_dependent_auto_drafts.
 	 *
-	 * @covers ::_wp_delete_customize_changeset_dependent_auto_drafts()
+	 * @covers ::_wp_delete_customize_changeset_dependent_auto_drafts
 	 */
 	function test_wp_delete_customize_changeset_dependent_auto_drafts() {
 		$auto_draft_post_id = $this->factory()->post->create(
@@ -956,4 +956,40 @@ class Test_Nav_Menus extends WP_UnitTestCase {
 		);
 	}
 
+	/**
+	 * Tests `wp_update_nav_menu_item()` with special characters in a category name.
+	 *
+	 * When inserting a category as a nav item, the `post_title` property should
+	 * be empty, as the item should get the title from the category object itself.
+	 *
+	 * @ticket 48011
+	 */
+	function test_wp_update_nav_menu_item_with_special_characters_in_category_name() {
+		$category_name = 'Test Cat - \"Pre-Slashed\" Cat Name & >';
+
+		$category = self::factory()->category->create_and_get(
+			array(
+				'name' => $category_name,
+			)
+		);
+
+		$category_item_id = wp_update_nav_menu_item(
+			$this->menu_id,
+			0,
+			array(
+				'menu-item-type'      => 'taxonomy',
+				'menu-item-object'    => 'category',
+				'menu-item-object-id' => $category->term_id,
+				'menu-item-status'    => 'publish',
+				/*
+				 * Interestingly enough, if we use `$cat->name` for the menu item title,
+				 * we won't be able to replicate the bug because it's in htmlentities form.
+				 */
+				'menu-item-title'     => $category_name,
+			)
+		);
+
+		$category_item = get_post( $category_item_id );
+		$this->assertEmpty( $category_item->post_title );
+	}
 }

@@ -74,11 +74,7 @@ class PluralFormsTest extends WP_UnitTestCase {
 	 * @group external-http
 	 */
 	public function test_regression( $lang, $nplurals, $expression ) {
-		if ( version_compare( phpversion(), '7.2', '>=' ) ) {
-			$this->markTestSkipped( 'Lambda functions are deprecated in PHP 7.2' );
-		}
-
-		require_once dirname( dirname( dirname( __FILE__ ) ) ) . '/includes/plural-form-function.php';
+		require_once dirname( dirname( __DIR__ ) ) . '/includes/plural-form-function.php';
 
 		$parenthesized = self::parenthesize_plural_expression( $expression );
 		$old_style     = tests_make_plural_form_function( $nplurals, $parenthesized );
@@ -110,7 +106,7 @@ class PluralFormsTest extends WP_UnitTestCase {
 				),
 			),
 			array(
-				// Ternary
+				// Ternary.
 				'n ? 1 : 2',
 				array(
 					-1 => 1,
@@ -120,7 +116,7 @@ class PluralFormsTest extends WP_UnitTestCase {
 				),
 			),
 			array(
-				// Comparison
+				// Comparison.
 				'n > 1 ? 1 : 2',
 				array(
 					-2 => 2,
@@ -163,9 +159,9 @@ class PluralFormsTest extends WP_UnitTestCase {
 	public function data_exceptions() {
 		return array(
 			array(
-				'n # 2',              // Invalid expression to parse
-				'Unknown symbol "#"', // Expected exception message
-				false,                // Whether to call the get() method or not
+				'n # 2',              // Invalid expression to parse.
+				'Unknown symbol "#"', // Expected exception message.
+				false,                // Whether to call the get() method or not.
 			),
 			array(
 				'n & 1',
