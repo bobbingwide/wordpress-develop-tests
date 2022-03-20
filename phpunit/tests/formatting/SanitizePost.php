@@ -8,7 +8,7 @@ class Tests_Formatting_SanitizePost extends WP_UnitTestCase {
 	/**
 	 * @ticket 22324
 	 */
-	function test_int_fields() {
+	public function test_int_fields() {
 		$post       = self::factory()->post->create_and_get();
 		$int_fields = array(
 			'ID'            => 'integer',
@@ -19,7 +19,14 @@ class Tests_Formatting_SanitizePost extends WP_UnitTestCase {
 		);
 
 		foreach ( $int_fields as $field => $type ) {
-			$this->assertInternalType( $type, $post->$field, "field $field" );
+			switch ( $type ) {
+				case 'integer':
+					$this->assertIsInt( $post->$field, "field $field" );
+					break;
+				case 'string':
+					$this->assertIsString( $post->$field, "field $field" );
+					break;
+			}
 		}
 	}
 }
