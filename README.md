@@ -1,11 +1,11 @@
 # wordpress-develop-tests 
-![banner](https://raw.githubusercontent.com/bobbingwide/wordpress-develop-tests/master/assets/wordpress-develop-tests-banner-772x250.jpg)
+![banner](assets/wordpress-develop-tests-banner-772x250.jpg)
 * Contributors: bobbingwide
 * Donate link: https://www.oik-plugins.com/oik/oik-donate/
 * Tags: PHPUnit, automated, testing
-* Requires at least: 5.3
-* Tested up to: 5.3
-* Stable tag: 5.3
+* Requires at least: 5.5
+* Tested up to: 5.9.3
+* Stable tag: 5.9.3
 * License: GPLv2 or later
 * License URI: http://www.gnu.org/licenses/gpl-2.0.html
 * Text Domain: default
@@ -37,7 +37,7 @@ Nothing as a plugin.
 You have to invoke the tests using PHPUnit.
 
 From v4.9.1 we provide a modified version of the phpunit.xml file so that you can attempt to run the WordPress core tests in situ.
-- We'll be running the tests in a Windows 10 environment using PHP 7.2.
+- We'll be running the tests in a Windows 10 environment using PHP 7.4 and maybe PHP 7.3.
 - The configuration file is different from the one delivered in WordPress core.
 * - Note: The tests do not run to completion. That is, they don't actually work when run in situ.
 
@@ -45,7 +45,7 @@ Testsuites
 The primary directory is different. You run the tests from the plugin directory,
 Instead of being called tests/phpunit/tests the directory is phpunit/tests
 
-We expect PHP 7.2 or 7.3 so there's no need for the exclude sections
+We expect PHP 7.2 - 7.4 so there's no need for the exclude sections
 
     <testsuites>
         <!-- Default test suite to run all tests -->
@@ -116,12 +116,10 @@ PHP const - same as for core
 # What would happen if I did actually run this? 
 If you activate the plugin then nothing is expected to happen since it doesn't contain any code.
 
-
 If you run PHPUnit then quite a lot might happen.
 
 And if you had happened to configure your database the same as your live site then you could destroy your live site.
 But probably not completely!
-
 
 # Can I run the tests from my WordPress site? 
 I'm sure you could try to do this but I can't see why you'd want to.
@@ -132,8 +130,7 @@ Use this plugin in combination with [oik-batch](https://github.com/bobbingwide/o
 
 # What versions of PHPUnit does this support? 
 
-From WordPress 5.2.3 and above the only version supported is PHPUnit 8.
-
+From WordPress 5.9 and above the only version supported is PHPUnit 9.
 
 
 # How does this help me to develop WordPress tests? 
@@ -150,6 +147,30 @@ See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.
 
 
 # What's the process for managing this repo? 
+
+* Method: March/April 2022
+- As for August 2020
+- Plus, update the main plugin file ( wordpress-develop-gtests.php ) to set the new version number.
+
+
+* Method: August 2020
+
+- Install the WordPress Git mirror. See commands below.
+- Change directory to a clone of the GitHub repository bobbingwide/wordpress-develop-tests
+- Remove the phpunit and qunit directories
+- Copy files from the tests folder, phpunit and qunit
+- update the readme.txt file
+- Commit changes, including any deletions
+- Push to GitHub
+- Pull into the WP-a2z websites plugin directory
+- Build the dynamic API reference for the latest level
+
+
+```
+cd \github\wordpress
+git clone https://github.com/WordPress/wordpress-develop
+```
+
 * Method: Nov 2019
 - Extract https://develop.svn.wordpress.org/tags/5.3 to c:\svn\wordpress-develop\5.3
 
@@ -158,6 +179,7 @@ cd \svn\wordpress-develop
 svn co https://develop.svn.wordpress.org/tags/5.3
 ```
 - remaining steps as August 2016
+
 
 * Method: Oct 2019
 - Extract https://develop.svn.wordpress.org/tags/5.2.3 to c:\svn\wordpress-develop\5.2.3
@@ -253,6 +275,13 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 ## Upgrade Notice 
+# 5.9.3 
+Built from https://github.com/WordPress/wordpress-develop ( on 2022/03/20 )
+Now requires PHPUnit 9.
+
+# 5.5 
+Built from https://github.com/WordPress/wordpress-develop ( on 2020/08/30 )
+
 # 5.3 
 Built from https://develop.svn.wordpress.org/tags/5.3 ( on 2019/11/26 )
 
@@ -294,6 +323,12 @@ Built from an update performed on 20 Nov 2014
 * New build from revision 30427 - WordPress 4.0.?
 
 ## Changelog 
+# 5.5 
+* Changed: Source files updated to version from Git clone
+* Tested: With PHPUnit 8.5.1
+* Tested: With WordPress 5.5 and 5.5.1-RC1
+* Tested: With PHP 7.4
+
 # 5.3 
 * Changed: Source files updated to tags/5.3
 * Tested: With PHPUnit 8.4.1
@@ -378,7 +413,6 @@ This will also extract the latest version of the source.
 
 Read about:
 
-
-- [PHPUnit 8](https://phpunit.readthedocs.io/en/8.4/)
+- [PHPUnit 9](https://phpunit.readthedocs.io/en/9.5/)
 - [Automated testing on make.wordpress.org](https://make.wordpress.org/core/handbook/automated-testing)
 

@@ -3,8 +3,8 @@ Contributors: bobbingwide
 Donate link: https://www.oik-plugins.com/oik/oik-donate/
 Tags: PHPUnit, automated, testing
 Requires at least: 5.5
-Tested up to: 5.5
-Stable tag: 5.5
+Tested up to: 5.9.3
+Stable tag: 5.9.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: default
@@ -115,12 +115,10 @@ PHP const - same as for core
 = What would happen if I did actually run this? =
 If you activate the plugin then nothing is expected to happen since it doesn't contain any code. 
 
-
 If you run PHPUnit then quite a lot might happen.
  
 And if you had happened to configure your database the same as your live site then you could destroy your live site.
 But probably not completely! 
-
 
 = Can I run the tests from my WordPress site? =
 I'm sure you could try to do this but I can't see why you'd want to.
@@ -131,7 +129,7 @@ Use this plugin in combination with [oik-batch](https://github.com/bobbingwide/o
 
 = What versions of PHPUnit does this support? =
 
-From WordPress 5.2.3 and above the only version supported is PHPUnit 8.
+From WordPress 5.9 and above the only version supported is PHPUnit 9.
 
 
 = How does this help me to develop WordPress tests? =
@@ -148,6 +146,11 @@ See [How to run PHPUnit tests for WordPress plugins in situ](https://herbmiller.
 
 
 = What's the process for managing this repo? =
+
+Method: March/April 2022
+- As for August 2020
+- Plus, update the main plugin file ( wordpress-develop-gtests.php ) to set the new version number.
+
 
 Method: August 2020
 
@@ -271,6 +274,10 @@ mklink /J wordpress-develop-tests svn\wordpress-develop\tests
 1. None
 
 == Upgrade Notice ==
+= 5.9.3 =
+Built from https://github.com/WordPress/wordpress-develop ( on 2022/03/20 )
+Now requires PHPUnit 9.
+
 = 5.5 =
 Built from https://github.com/WordPress/wordpress-develop ( on 2020/08/30 )
 
@@ -405,7 +412,6 @@ This will also extract the latest version of the source.
 
 Read about: 
 
-
-- [PHPUnit 8](https://phpunit.readthedocs.io/en/8.4/)
+- [PHPUnit 9](https://phpunit.readthedocs.io/en/9.5/)
 - [Automated testing on make.wordpress.org](https://make.wordpress.org/core/handbook/automated-testing)
 
